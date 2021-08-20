@@ -4,29 +4,28 @@ import React__default, { useState, createElement } from 'react';
 import AccountBalanceWalletIcon from '@material-ui/icons/AccountBalanceWallet';
 
 function DragMove(props) {
-  var onPointerDown = props.onPointerDown,
-      onPointerUp = props.onPointerUp,
-      onPointerMove = props.onPointerMove,
-      onDragMove = props.onDragMove,
-      children = props.children,
-      style = props.style,
-      className = props.className;
+  const {
+    onPointerDown,
+    onPointerUp,
+    onPointerMove,
+    onDragMove,
+    children,
+    style,
+    className
+  } = props;
+  const [isDragging, setIsDragging] = useState(false);
 
-  var _useState = useState(false),
-      isDragging = _useState[0],
-      setIsDragging = _useState[1];
-
-  var handlePointerDown = function handlePointerDown(e) {
+  const handlePointerDown = e => {
     setIsDragging(true);
     onPointerDown(e);
   };
 
-  var handlePointerUp = function handlePointerUp(e) {
+  const handlePointerUp = e => {
     setIsDragging(false);
     onPointerUp(e);
   };
 
-  var handlePointerMove = function handlePointerMove(e) {
+  const handlePointerMove = e => {
     if (isDragging) onDragMove(e);
     onPointerMove(e);
   };
@@ -40,12 +39,12 @@ function DragMove(props) {
   }, children);
 }
 DragMove.defaultProps = {
-  onPointerDown: function onPointerDown() {},
-  onPointerUp: function onPointerUp() {},
-  onPointerMove: function onPointerMove() {}
+  onPointerDown: () => {},
+  onPointerUp: () => {},
+  onPointerMove: () => {}
 };
 
-var useStyles = makeStyles({
+const useStyles = makeStyles({
   root: {
     position: 'fixed',
     top: 0,
@@ -63,30 +62,20 @@ var useStyles = makeStyles({
   },
   byoaButton: {}
 });
-var ByoaSDK = function ByoaSDK(props) {
-  var classes = useStyles();
-
-  var _React$useState = useState({
+const ByoaSDK = props => {
+  const classes = useStyles();
+  const [translateDial, setTranslateDial] = useState({
     x: 0,
     y: 0
-  }),
-      translateDial = _React$useState[0],
-      setTranslateDial = _React$useState[1];
-
-  var _React$useState2 = useState("up"),
-      dialDirection = _React$useState2[0],
-      setDialDirection = _React$useState2[1];
-
-  var _React$useState3 = useState(false),
-      openDial = _React$useState3[0],
-      setOpenDial = _React$useState3[1];
-
+  });
+  const [dialDirection, setDialDirection] = useState("up");
+  const [openDial, setOpenDial] = useState(false);
   return createElement(Box, {
     className: classes.root
   }, createElement(Container, {
     className: classes.speedDial
   }, createElement(DragMove, {
-    onDragMove: function onDragMove(e) {
+    onDragMove: e => {
       setTranslateDial({
         x: translateDial.x + e.movementX,
         y: translateDial.y + e.movementY
@@ -102,7 +91,7 @@ var ByoaSDK = function ByoaSDK(props) {
     }
   }, createElement(SpeedDial, {
     style: {
-      transform: "translateX(" + translateDial.x + "px) translateY(" + translateDial.y + "px)"
+      transform: `translateX(${translateDial.x}px) translateY(${translateDial.y}px)`
     },
     ariaLabel: "BYOA Speed Dial",
     hidden: false,
@@ -110,19 +99,19 @@ var ByoaSDK = function ByoaSDK(props) {
       className: classes.byoaButton
     }, "RUN"),
     open: openDial,
-    onOpen: function onOpen() {
+    onOpen: () => {
       setOpenDial(true);
     },
-    onClose: function onClose() {
+    onClose: () => {
       setOpenDial(false);
     },
-    onClick: function onClick() {},
+    onClick: () => {},
     direction: dialDirection
   }, createElement(SpeedDialAction, {
     key: 'sda-connect-wallet',
     icon: createElement(AccountBalanceWalletIcon, null),
     tooltipTitle: 'Connect Wallet',
-    onClick: function onClick() {
+    onClick: () => {
       setOpenDial(false);
     }
   })))));
