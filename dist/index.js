@@ -9,6 +9,7 @@ var WalletConnectProvider = _interopDefault(require('@walletconnect/web3-provide
 var PetsIcon = _interopDefault(require('@material-ui/icons/Pets'));
 var Web3 = _interopDefault(require('web3'));
 var Web3Modal = _interopDefault(require('web3modal'));
+var ethers = require('ethers');
 
 // A type of promise-like that resolves synchronously and supports only one observer
 const _Pact = /*#__PURE__*/(function() {
@@ -981,6 +982,19 @@ var abi$1 = {
 
 var byoaContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 var providerNetwork = "http://localhost:8545";
+var jrpcProvider = new ethers.ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
+window.byoa = {
+  context: {
+    ethers: ethers.ethers,
+    provider: ethers.ethers.getDefaultProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5'),
+    jrpcProvider: jrpcProvider,
+    addDataListener: function addDataListener(cb) {
+    },
+    account: {
+      address: null
+    }
+  }
+};
 var useStyles = core.makeStyles({
   root: {
     position: 'fixed',
@@ -1129,6 +1143,29 @@ var ByoaSDK = function ByoaSDK(props) {
     }
   };
 
+  var getTokenMetadata = function getTokenMetadata(uri) {
+    try {
+      return Promise.resolve(new Promise(function (resolve) {
+        resolve({
+          meta: uri,
+          image: "ipfs://QmYoSTehmdFUnSYCFrYdvSrEtNGy9U5gWEfroCTMGecHKw/0.png",
+          byoa: {
+            browser: {
+              uri: "http://localhost:3000/scripts/example1.js",
+              target: "host"
+            }
+          }
+        });
+      }));
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  };
+
+  var transformIPFSToPinned = function transformIPFSToPinned(ipfsURI) {
+    return "" + ipfsURI;
+  };
+
   var refreshMyApps = function refreshMyApps(addressHelper) {
     try {
       var w3 = new Web3(providerNetwork);
@@ -1148,33 +1185,42 @@ var ByoaSDK = function ByoaSDK(props) {
           var _temp5 = _forTo(myTokenIds, function (i) {
             var tid = parseInt(myTokenIds[i]);
             return Promise.resolve(contract.methods.getAppIdByTokenId(tid).call()).then(function (appIdForToken) {
-              function _temp4() {
-                var ia = {
-                  id: tid,
-                  tokenURI: "",
-                  app: appLUT[appIdForToken]
-                };
-                allInstalls.push(ia);
-              }
-
-              var _temp3 = function () {
-                if (appLUT[appIdForToken] !== null) {
-                  return Promise.resolve(contract.methods.getAppDetailsById(parseInt(appIdForToken)).call()).then(function (appDetails) {
-                    appLUT[appIdForToken] = {
-                      id: appIdForToken,
-                      name: appDetails[0],
-                      description: appDetails[1],
-                      tokenURI: appDetails[2],
-                      owner: appDetails[3],
-                      price: parseInt(appDetails[4]),
-                      address: byoaContractAddress,
-                      version: 'beta v0.1'
+              return Promise.resolve(contract.methods.tokenURI(tid).call()).then(function (directTokenURI) {
+                return Promise.resolve(getTokenMetadata(directTokenURI)).then(function (tokenMeta) {
+                  function _temp4() {
+                    var ia = {
+                      id: tid,
+                      tokenURI: directTokenURI,
+                      app: appLUT[appIdForToken],
+                      imageURI: tokenMeta.image,
+                      byoaDetails: {
+                        uri: tokenMeta.byoa.browser.uri,
+                        target: tokenMeta.byoa.browser.target
+                      }
                     };
-                  });
-                }
-              }();
+                    allInstalls.push(ia);
+                  }
 
-              return _temp3 && _temp3.then ? _temp3.then(_temp4) : _temp4(_temp3);
+                  var _temp3 = function () {
+                    if (appLUT[appIdForToken] !== null) {
+                      return Promise.resolve(contract.methods.getAppDetailsById(parseInt(appIdForToken)).call()).then(function (appDetails) {
+                        appLUT[appIdForToken] = {
+                          id: appIdForToken,
+                          name: appDetails[0],
+                          description: appDetails[1],
+                          tokenURI: appDetails[2],
+                          owner: appDetails[3],
+                          price: parseInt(appDetails[4]),
+                          address: byoaContractAddress,
+                          version: 'beta v0.1'
+                        };
+                      });
+                    }
+                  }();
+
+                  return _temp3 && _temp3.then ? _temp3.then(_temp4) : _temp4(_temp3);
+                });
+              });
             });
           });
 
@@ -1240,7 +1286,22 @@ var ByoaSDK = function ByoaSDK(props) {
       icon: React.createElement(PetsIcon, null),
       tooltipTitle: installedApp.app.name + " (#" + installedApp.id + ")",
       onClick: function onClick() {
-        alert('Executing ' + installedApp.app.name);
+        var scriptID = "byoa-" + installedApp.id + "-" + installedApp.app.id;
+        var existingApp = document.getElementById(scriptID);
+
+        if (!existingApp) {
+          var script = document.createElement('script');
+          script.src = transformIPFSToPinned(installedApp.byoaDetails.uri);
+          script.id = scriptID;
+
+          if (installedApp.byoaDetails.target == "host") {
+            document.body.appendChild(script);
+
+            script.onload = function () {
+              console.log('loaded script');
+            };
+          }
+        }
       }
     });
   })))));

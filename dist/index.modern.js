@@ -6,6 +6,7 @@ import WalletConnectProvider from '@walletconnect/web3-provider';
 import PetsIcon from '@material-ui/icons/Pets';
 import Web3 from 'web3';
 import Web3Modal from 'web3modal';
+import { ethers } from 'ethers';
 
 function DragMove(props) {
   const {
@@ -862,6 +863,19 @@ var abi$1 = {
 
 const byoaContractAddress = `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512`;
 const providerNetwork = `http://localhost:8545`;
+const jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
+window.byoa = {
+  context: {
+    ethers: ethers,
+    provider: ethers.getDefaultProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5'),
+    jrpcProvider: jrpcProvider,
+    addDataListener: cb => {
+    },
+    account: {
+      address: null
+    }
+  }
+};
 const useStyles = makeStyles({
   root: {
     position: 'fixed',
@@ -965,6 +979,25 @@ const ByoaSDK = props => {
     setAccountAddress(null);
   };
 
+  const getTokenMetadata = async uri => {
+    return new Promise(resolve => {
+      resolve({
+        meta: uri,
+        image: "ipfs://QmYoSTehmdFUnSYCFrYdvSrEtNGy9U5gWEfroCTMGecHKw/0.png",
+        byoa: {
+          browser: {
+            uri: "http://localhost:3000/scripts/example1.js",
+            target: "host"
+          }
+        }
+      });
+    });
+  };
+
+  const transformIPFSToPinned = ipfsURI => {
+    return `${ipfsURI}`;
+  };
+
   const refreshMyApps = async addressHelper => {
     let w3 = new Web3(providerNetwork);
 
@@ -978,6 +1011,8 @@ const ByoaSDK = props => {
       for (var i = 0; i < myTokenIds.length; i++) {
         let tid = parseInt(myTokenIds[i]);
         let appIdForToken = await contract.methods.getAppIdByTokenId(tid).call();
+        let directTokenURI = await contract.methods.tokenURI(tid).call();
+        let tokenMeta = await getTokenMetadata(directTokenURI);
 
         if (appLUT[appIdForToken] !== null) {
           let appDetails = await contract.methods.getAppDetailsById(parseInt(appIdForToken)).call();
@@ -995,8 +1030,13 @@ const ByoaSDK = props => {
 
         let ia = {
           id: tid,
-          tokenURI: "",
-          app: appLUT[appIdForToken]
+          tokenURI: directTokenURI,
+          app: appLUT[appIdForToken],
+          imageURI: tokenMeta.image,
+          byoaDetails: {
+            uri: tokenMeta.byoa.browser.uri,
+            target: tokenMeta.byoa.browser.target
+          }
         };
         allInstalls.push(ia);
       }
@@ -1057,7 +1097,22 @@ const ByoaSDK = props => {
     icon: createElement(PetsIcon, null),
     tooltipTitle: `${installedApp.app.name} (#${installedApp.id})`,
     onClick: () => {
-      alert('Executing ' + installedApp.app.name);
+      let scriptID = `byoa-${installedApp.id}-${installedApp.app.id}`;
+      const existingApp = document.getElementById(scriptID);
+
+      if (!existingApp) {
+        const script = document.createElement('script');
+        script.src = transformIPFSToPinned(installedApp.byoaDetails.uri);
+        script.id = scriptID;
+
+        if (installedApp.byoaDetails.target == "host") {
+          document.body.appendChild(script);
+
+          script.onload = () => {
+            console.log('loaded script');
+          };
+        }
+      }
     }
   }))))));
 };

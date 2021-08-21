@@ -29,9 +29,23 @@ class Example extends Component {
 - Have a stylable button that one can click to connect to wallet
 - listen for wallet connect events from host
 - fetch byoa's from a specific contract address
+- load byoa metadata
 - load a byoa onto the page
 - unload a byoa from the page
 - interface with the byoa with a common interface
+
+## Example metadata json
+```json
+{
+  "image": "ipfs://examplecidforimage",
+  "byoa": {
+    "browser" : {
+      "uri" : "ipfs://examplefobrowseruri",
+      "target": "classic"
+    }
+  }
+}
+```
 
 
 ## License

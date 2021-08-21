@@ -7,6 +7,8 @@ export declare class ArrayCoder extends Coder {
     readonly coder: Coder;
     readonly length: number;
     constructor(coder: Coder, length: number, localName: string);
+    defaultValue(): Array<any>;
     encode(writer: Writer, value: Array<any>): number;
     decode(reader: Reader): any;
 }
+//# sourceMappingURL=array.d.ts.map

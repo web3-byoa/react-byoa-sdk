@@ -10,13 +10,33 @@ import Web3 from 'web3';
 import Web3Modal from "web3modal";
 import { InstalledApp } from './types/installedApp';
 import abi from './utils/abi/Byoa.json';
+import { ethers } from 'ethers';
 
 interface Props {
-  
+  dataPipe? : {
+    data: any
+  }
 }
 
 const byoaContractAddress = `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512`;
 const providerNetwork = `http://localhost:8545`;
+const jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
+
+let listeners : any = [];
+// @ts-expect-error
+window.byoa = {
+  context: {
+    ethers: ethers,
+    provider: ethers.getDefaultProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5'),
+    jrpcProvider: jrpcProvider,
+    addDataListener: (cb : any) => {
+      listeners.push(cb);
+    },
+    account: {
+      address: null
+    }
+  }
+};
 
 const useStyles = makeStyles({
   root: {
@@ -114,13 +134,30 @@ export const ByoaSDK = (props : Props) => {
     }
   };
 
-  
-
   const disconnectWallet = async () => {
     await web3Modal.clearCachedProvider();
     setProvider(null);
     setAccountAddress(null);
   };
+
+  const getTokenMetadata = async (uri : string) : Promise<any> =>  {
+    return new Promise<any>( (resolve) => {
+      resolve({
+        meta: uri,
+        image: "ipfs://QmYoSTehmdFUnSYCFrYdvSrEtNGy9U5gWEfroCTMGecHKw/0.png",
+        byoa: {
+          browser: {
+            uri: "http://localhost:3000/scripts/example1.js",
+            target: "host"
+          }
+        }
+      });
+    });
+  };
+
+  const transformIPFSToPinned = (ipfsURI : String) : String => {
+    return `${ipfsURI}`;
+  }
 
   const refreshMyApps = async (addressHelper : String | undefined | null) => {
     let w3 = new Web3(providerNetwork);
@@ -138,6 +175,8 @@ export const ByoaSDK = (props : Props) => {
         for (var i = 0; i < myTokenIds.length; i ++) {
             let tid = parseInt(myTokenIds[i]);
             let appIdForToken = await contract.methods.getAppIdByTokenId(tid).call();
+            let directTokenURI = await contract.methods.tokenURI(tid).call();
+            let tokenMeta = await getTokenMetadata(directTokenURI);
             
             if(appLUT[appIdForToken] !== null) {
               let appDetails = await contract.methods.getAppDetailsById(parseInt(appIdForToken)).call();
@@ -156,8 +195,13 @@ export const ByoaSDK = (props : Props) => {
 
             let ia : InstalledApp = {
                 id: tid,
-                tokenURI: "",
-                app: appLUT[appIdForToken]
+                tokenURI: directTokenURI,
+                app: appLUT[appIdForToken],
+                imageURI: tokenMeta.image,
+                byoaDetails: {
+                  uri: tokenMeta.byoa.browser.uri,
+                  target: tokenMeta.byoa.browser.target
+                }
             }
 
             allInstalls.push(ia);
@@ -218,7 +262,20 @@ export const ByoaSDK = (props : Props) => {
                 icon={<PetsIcon />}
                 tooltipTitle={`${installedApp.app.name} (#${installedApp.id})`}
                 onClick={() => {
-                  alert('Executing ' + installedApp.app.name)
+                  let scriptID = `byoa-${installedApp.id}-${installedApp.app.id}`;
+                  const existingApp = document.getElementById(scriptID);
+                  if (!existingApp) {
+                    const script = document.createElement('script');
+                    script.src = transformIPFSToPinned(installedApp.byoaDetails.uri) as string;
+                    script.id = scriptID;
+                    if(installedApp.byoaDetails.target == "host") {
+                      document.body.appendChild(script);
+                      script.onload = () => {
+                        // The script has loaded, possibly pass providers to it now
+                        console.log('loaded script');
+                      }
+                    }
+                  }
                 }}
               />
             ))}
