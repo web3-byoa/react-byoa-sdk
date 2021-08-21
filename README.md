@@ -47,6 +47,12 @@ class Example extends Component {
 }
 ```
 
+## Running
+1. Set up your local smart contract environment, see instructions in that repo
+2. Create apps in your smart contract environment
+3. Use app-store to add a smart contract to your account
+4. run `npm start` in main directory here, then run `npm start` in `example` directory.
+
 
 ## License
 
