@@ -866,6 +866,9 @@ const providerNetwork = `http://localhost:8545`;
 const jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
 window.byoa = {
   context: {
+    target: {
+      hud: "byoa-hud"
+    },
     ethers: ethers,
     provider: ethers.getDefaultProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5'),
     jrpcProvider: jrpcProvider,
@@ -883,7 +886,7 @@ const useStyles = makeStyles({
     left: 0,
     minWidth: '100vw',
     minHeight: '100vh',
-    background: 'rgba(50,0,0,0.25)',
+    background: 'rgba(50,0,0,0.00)',
     pointerEvents: 'none'
   },
   speedDial: {
@@ -1049,7 +1052,8 @@ const ByoaSDK = props => {
   };
 
   return createElement(Box, {
-    className: classes.root
+    className: classes.root,
+    id: "byoa-hud"
   }, createElement(Container, {
     className: classes.speedDial
   }, createElement(DragMove, {

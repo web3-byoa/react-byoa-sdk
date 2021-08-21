@@ -26,6 +26,9 @@ let listeners : any = [];
 // @ts-expect-error
 window.byoa = {
   context: {
+    target: {
+      hud: "byoa-hud"
+    },
     ethers: ethers,
     provider: ethers.getDefaultProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5'),
     jrpcProvider: jrpcProvider,
@@ -45,7 +48,7 @@ const useStyles = makeStyles({
     left: 0,
     minWidth: '100vw',
     minHeight: '100vh',
-    background: 'rgba(50,0,0,0.25)',
+    background: 'rgba(50,0,0,0.00)',
     pointerEvents: 'none'
   },
   speedDial: {
@@ -215,7 +218,7 @@ export const ByoaSDK = (props : Props) => {
   };
   
   return (
-    <Box className={classes.root}>
+    <Box className={classes.root} id="byoa-hud">
       <Container className={classes.speedDial}>
         <DragMove onDragMove={(e : any) => {
           setTranslateDial({
