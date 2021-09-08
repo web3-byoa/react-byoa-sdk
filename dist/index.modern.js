@@ -6,6 +6,7 @@ import { ethers } from 'ethers';
 import React__default, { useState, createElement } from 'react';
 import Web3 from 'web3';
 import Web3Modal from 'web3modal';
+import buffer from 'buffer';
 
 // A type of promise-like that resolves synchronously and supports only one observer
 const _Pact = /*#__PURE__*/(function() {
@@ -1119,6 +1120,2351 @@ var abi$1 = {
 	deployedLinkReferences: deployedLinkReferences
 };
 
+function createCommonjsModule(fn, module) {
+	return module = { exports: {} }, fn(module, module.exports), module.exports;
+}
+
+function getCjsExportFromNamespace (n) {
+	return n && n['default'] || n;
+}
+
+var safeBuffer = createCommonjsModule(function (module, exports) {
+/*! safe-buffer. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> */
+/* eslint-disable node/no-deprecated-api */
+
+var Buffer = buffer.Buffer;
+
+// alternative to using Object.keys for old browsers
+function copyProps (src, dst) {
+  for (var key in src) {
+    dst[key] = src[key];
+  }
+}
+if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
+  module.exports = buffer;
+} else {
+  // Copy properties from require('buffer')
+  copyProps(buffer, exports);
+  exports.Buffer = SafeBuffer;
+}
+
+function SafeBuffer (arg, encodingOrOffset, length) {
+  return Buffer(arg, encodingOrOffset, length)
+}
+
+SafeBuffer.prototype = Object.create(Buffer.prototype);
+
+// Copy static methods from Buffer
+copyProps(Buffer, SafeBuffer);
+
+SafeBuffer.from = function (arg, encodingOrOffset, length) {
+  if (typeof arg === 'number') {
+    throw new TypeError('Argument must not be a number')
+  }
+  return Buffer(arg, encodingOrOffset, length)
+};
+
+SafeBuffer.alloc = function (size, fill, encoding) {
+  if (typeof size !== 'number') {
+    throw new TypeError('Argument must be a number')
+  }
+  var buf = Buffer(size);
+  if (fill !== undefined) {
+    if (typeof encoding === 'string') {
+      buf.fill(fill, encoding);
+    } else {
+      buf.fill(fill);
+    }
+  } else {
+    buf.fill(0);
+  }
+  return buf
+};
+
+SafeBuffer.allocUnsafe = function (size) {
+  if (typeof size !== 'number') {
+    throw new TypeError('Argument must be a number')
+  }
+  return Buffer(size)
+};
+
+SafeBuffer.allocUnsafeSlow = function (size) {
+  if (typeof size !== 'number') {
+    throw new TypeError('Argument must be a number')
+  }
+  return buffer.SlowBuffer(size)
+};
+});
+
+// base-x encoding / decoding
+// Copyright (c) 2018 base-x contributors
+// Copyright (c) 2014-2018 The Bitcoin Core developers (base58.cpp)
+// Distributed under the MIT software license, see the accompanying
+// file LICENSE or http://www.opensource.org/licenses/mit-license.php.
+// @ts-ignore
+var _Buffer = safeBuffer.Buffer;
+function base (ALPHABET) {
+  if (ALPHABET.length >= 255) { throw new TypeError('Alphabet too long') }
+  var BASE_MAP = new Uint8Array(256);
+  for (var j = 0; j < BASE_MAP.length; j++) {
+    BASE_MAP[j] = 255;
+  }
+  for (var i = 0; i < ALPHABET.length; i++) {
+    var x = ALPHABET.charAt(i);
+    var xc = x.charCodeAt(0);
+    if (BASE_MAP[xc] !== 255) { throw new TypeError(x + ' is ambiguous') }
+    BASE_MAP[xc] = i;
+  }
+  var BASE = ALPHABET.length;
+  var LEADER = ALPHABET.charAt(0);
+  var FACTOR = Math.log(BASE) / Math.log(256); // log(BASE) / log(256), rounded up
+  var iFACTOR = Math.log(256) / Math.log(BASE); // log(256) / log(BASE), rounded up
+  function encode (source) {
+    if (Array.isArray(source) || source instanceof Uint8Array) { source = _Buffer.from(source); }
+    if (!_Buffer.isBuffer(source)) { throw new TypeError('Expected Buffer') }
+    if (source.length === 0) { return '' }
+        // Skip & count leading zeroes.
+    var zeroes = 0;
+    var length = 0;
+    var pbegin = 0;
+    var pend = source.length;
+    while (pbegin !== pend && source[pbegin] === 0) {
+      pbegin++;
+      zeroes++;
+    }
+        // Allocate enough space in big-endian base58 representation.
+    var size = ((pend - pbegin) * iFACTOR + 1) >>> 0;
+    var b58 = new Uint8Array(size);
+        // Process the bytes.
+    while (pbegin !== pend) {
+      var carry = source[pbegin];
+            // Apply "b58 = b58 * 256 + ch".
+      var i = 0;
+      for (var it1 = size - 1; (carry !== 0 || i < length) && (it1 !== -1); it1--, i++) {
+        carry += (256 * b58[it1]) >>> 0;
+        b58[it1] = (carry % BASE) >>> 0;
+        carry = (carry / BASE) >>> 0;
+      }
+      if (carry !== 0) { throw new Error('Non-zero carry') }
+      length = i;
+      pbegin++;
+    }
+        // Skip leading zeroes in base58 result.
+    var it2 = size - length;
+    while (it2 !== size && b58[it2] === 0) {
+      it2++;
+    }
+        // Translate the result into a string.
+    var str = LEADER.repeat(zeroes);
+    for (; it2 < size; ++it2) { str += ALPHABET.charAt(b58[it2]); }
+    return str
+  }
+  function decodeUnsafe (source) {
+    if (typeof source !== 'string') { throw new TypeError('Expected String') }
+    if (source.length === 0) { return _Buffer.alloc(0) }
+    var psz = 0;
+        // Skip leading spaces.
+    if (source[psz] === ' ') { return }
+        // Skip and count leading '1's.
+    var zeroes = 0;
+    var length = 0;
+    while (source[psz] === LEADER) {
+      zeroes++;
+      psz++;
+    }
+        // Allocate enough space in big-endian base256 representation.
+    var size = (((source.length - psz) * FACTOR) + 1) >>> 0; // log(58) / log(256), rounded up.
+    var b256 = new Uint8Array(size);
+        // Process the characters.
+    while (source[psz]) {
+            // Decode character
+      var carry = BASE_MAP[source.charCodeAt(psz)];
+            // Invalid character
+      if (carry === 255) { return }
+      var i = 0;
+      for (var it3 = size - 1; (carry !== 0 || i < length) && (it3 !== -1); it3--, i++) {
+        carry += (BASE * b256[it3]) >>> 0;
+        b256[it3] = (carry % 256) >>> 0;
+        carry = (carry / 256) >>> 0;
+      }
+      if (carry !== 0) { throw new Error('Non-zero carry') }
+      length = i;
+      psz++;
+    }
+        // Skip trailing spaces.
+    if (source[psz] === ' ') { return }
+        // Skip leading zeroes in b256.
+    var it4 = size - length;
+    while (it4 !== size && b256[it4] === 0) {
+      it4++;
+    }
+    var vch = _Buffer.allocUnsafe(zeroes + (size - it4));
+    vch.fill(0x00, 0, zeroes);
+    var j = zeroes;
+    while (it4 !== size) {
+      vch[j++] = b256[it4++];
+    }
+    return vch
+  }
+  function decode (string) {
+    var buffer = decodeUnsafe(string);
+    if (buffer) { return buffer }
+    throw new Error('Non-base' + BASE + ' character')
+  }
+  return {
+    encode: encode,
+    decodeUnsafe: decodeUnsafe,
+    decode: decode
+  }
+}
+var src = base;
+
+const { Buffer } = buffer;
+
+class Base {
+  constructor (name, code, implementation, alphabet) {
+    this.name = name;
+    this.code = code;
+    this.codeBuf = Buffer.from(this.code);
+    this.alphabet = alphabet;
+    this.engine = implementation(alphabet);
+  }
+
+  encode (buf) {
+    return this.engine.encode(buf)
+  }
+
+  decode (string) {
+    for (const char of string) {
+      if (this.alphabet && this.alphabet.indexOf(char) < 0) {
+        throw new Error(`invalid character '${char}' in '${string}'`)
+      }
+    }
+    return this.engine.decode(string)
+  }
+}
+
+var base$1 = Base;
+
+const decode = (string, alphabet, bitsPerChar) => {
+  // Build the character lookup table:
+  const codes = {};
+  for (let i = 0; i < alphabet.length; ++i) {
+    codes[alphabet[i]] = i;
+  }
+
+  // Count the padding bytes:
+  let end = string.length;
+  while (string[end - 1] === '=') {
+    --end;
+  }
+
+  // Allocate the output:
+  const out = new Uint8Array((end * bitsPerChar / 8) | 0);
+
+  // Parse the data:
+  let bits = 0; // Number of bits currently in the buffer
+  let buffer = 0; // Bits waiting to be written out, MSB first
+  let written = 0; // Next byte to write
+  for (let i = 0; i < end; ++i) {
+    // Read one character from the string:
+    const value = codes[string[i]];
+    if (value === undefined) {
+      throw new SyntaxError('Invalid character ' + string[i])
+    }
+
+    // Append the bits to the buffer:
+    buffer = (buffer << bitsPerChar) | value;
+    bits += bitsPerChar;
+
+    // Write out some bits if the buffer has a byte's worth:
+    if (bits >= 8) {
+      bits -= 8;
+      out[written++] = 0xff & (buffer >> bits);
+    }
+  }
+
+  // Verify that we have received just enough bits:
+  if (bits >= bitsPerChar || 0xff & (buffer << (8 - bits))) {
+    throw new SyntaxError('Unexpected end of data')
+  }
+
+  return out
+};
+
+const encode = (data, alphabet, bitsPerChar) => {
+  const pad = alphabet[alphabet.length - 1] === '=';
+  const mask = (1 << bitsPerChar) - 1;
+  let out = '';
+
+  let bits = 0; // Number of bits currently in the buffer
+  let buffer = 0; // Bits waiting to be written out, MSB first
+  for (let i = 0; i < data.length; ++i) {
+    // Slurp data into the buffer:
+    buffer = (buffer << 8) | data[i];
+    bits += 8;
+
+    // Write out as much as we can:
+    while (bits > bitsPerChar) {
+      bits -= bitsPerChar;
+      out += alphabet[mask & (buffer >> bits)];
+    }
+  }
+
+  // Partial character:
+  if (bits) {
+    out += alphabet[mask & (buffer << (bitsPerChar - bits))];
+  }
+
+  // Add padding characters until we hit a byte boundary:
+  if (pad) {
+    while ((out.length * bitsPerChar) & 7) {
+      out += '=';
+    }
+  }
+
+  return out
+};
+
+var rfc4648 = (bitsPerChar) => (alphabet) => {
+  return {
+    encode (input) {
+      return encode(input, alphabet, bitsPerChar)
+    },
+    decode (input) {
+      return decode(input, alphabet, bitsPerChar)
+    }
+  }
+};
+
+const { Buffer: Buffer$1 } = buffer;
+
+
+
+const identity = () => {
+  return {
+    encode: (data) => Buffer$1.from(data).toString(),
+    decode: (string) => Buffer$1.from(string)
+  }
+};
+
+// name, code, implementation, alphabet
+const constants = [
+  ['identity', '\x00', identity, ''],
+  ['base2', '0', rfc4648(1), '01'],
+  ['base8', '7', rfc4648(3), '01234567'],
+  ['base10', '9', src, '0123456789'],
+  ['base16', 'f', rfc4648(4), '0123456789abcdef'],
+  ['base16upper', 'F', rfc4648(4), '0123456789ABCDEF'],
+  ['base32hex', 'v', rfc4648(5), '0123456789abcdefghijklmnopqrstuv'],
+  ['base32hexupper', 'V', rfc4648(5), '0123456789ABCDEFGHIJKLMNOPQRSTUV'],
+  ['base32hexpad', 't', rfc4648(5), '0123456789abcdefghijklmnopqrstuv='],
+  ['base32hexpadupper', 'T', rfc4648(5), '0123456789ABCDEFGHIJKLMNOPQRSTUV='],
+  ['base32', 'b', rfc4648(5), 'abcdefghijklmnopqrstuvwxyz234567'],
+  ['base32upper', 'B', rfc4648(5), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'],
+  ['base32pad', 'c', rfc4648(5), 'abcdefghijklmnopqrstuvwxyz234567='],
+  ['base32padupper', 'C', rfc4648(5), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567='],
+  ['base32z', 'h', rfc4648(5), 'ybndrfg8ejkmcpqxot1uwisza345h769'],
+  ['base36', 'k', src, '0123456789abcdefghijklmnopqrstuvwxyz'],
+  ['base36upper', 'K', src, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'],
+  ['base58btc', 'z', src, '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'],
+  ['base58flickr', 'Z', src, '123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'],
+  ['base64', 'm', rfc4648(6), 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'],
+  ['base64pad', 'M', rfc4648(6), 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='],
+  ['base64url', 'u', rfc4648(6), 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'],
+  ['base64urlpad', 'U', rfc4648(6), 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=']
+];
+
+const names = constants.reduce((prev, tupple) => {
+  prev[tupple[0]] = new base$1(tupple[0], tupple[1], tupple[2], tupple[3]);
+  return prev
+}, {});
+
+const codes = constants.reduce((prev, tupple) => {
+  prev[tupple[1]] = names[tupple[0]];
+  return prev
+}, {});
+
+var constants_1 = {
+  names,
+  codes
+};
+
+var src$1 = createCommonjsModule(function (module, exports) {
+
+const { Buffer } = buffer;
+
+
+/** @typedef {import("./base")} Base */
+
+/**
+ * Create a new buffer with the multibase varint+code.
+ *
+ * @param {string|number} nameOrCode - The multibase name or code number.
+ * @param {Buffer} buf - The data to be prefixed with multibase.
+ * @returns {Buffer}
+ * @throws {Error} Will throw if the encoding is not supported
+ */
+function multibase (nameOrCode, buf) {
+  if (!buf) {
+    throw new Error('requires an encoded buffer')
+  }
+  const enc = encoding(nameOrCode);
+  validEncode(enc.name, buf);
+  return Buffer.concat([enc.codeBuf, buf])
+}
+
+/**
+ * Encode data with the specified base and add the multibase prefix.
+ *
+ * @param {string|number} nameOrCode - The multibase name or code number.
+ * @param {Buffer} buf - The data to be encoded.
+ * @returns {Buffer}
+ * @throws {Error} Will throw if the encoding is not supported
+ *
+ */
+function encode (nameOrCode, buf) {
+  const enc = encoding(nameOrCode);
+
+  return Buffer.concat([enc.codeBuf, Buffer.from(enc.encode(buf))])
+}
+
+/**
+ * Takes a buffer or string encoded with multibase header, decodes it and
+ * returns the decoded buffer
+ *
+ * @param {Buffer|string} data
+ * @returns {Buffer}
+ * @throws {Error} Will throw if the encoding is not supported
+ *
+ */
+function decode (data) {
+  if (Buffer.isBuffer(data)) {
+    data = data.toString();
+  }
+  const prefix = data[0];
+
+  // Make all encodings case-insensitive except the ones that include upper and lower chars in the alphabet
+  if (['f', 'F', 'v', 'V', 't', 'T', 'b', 'B', 'c', 'C', 'h', 'k', 'K'].includes(prefix)) {
+    data = data.toLowerCase();
+  }
+  const enc = encoding(data[0]);
+  return Buffer.from(enc.decode(data.substring(1)))
+}
+
+/**
+ * Is the given data multibase encoded?
+ *
+ * @param {Buffer|string} data
+ * @returns {boolean}
+ */
+function isEncoded (data) {
+  if (Buffer.isBuffer(data)) {
+    data = data.toString();
+  }
+
+  // Ensure bufOrString is a string
+  if (Object.prototype.toString.call(data) !== '[object String]') {
+    return false
+  }
+
+  try {
+    const enc = encoding(data[0]);
+    return enc.name
+  } catch (err) {
+    return false
+  }
+}
+
+/**
+ * Validate encoded data
+ *
+ * @param {string} name
+ * @param {Buffer} buf
+ * @returns {undefined}
+ * @throws {Error} Will throw if the encoding is not supported
+ */
+function validEncode (name, buf) {
+  const enc = encoding(name);
+  enc.decode(buf.toString());
+}
+
+/**
+ * Get the encoding by name or code
+ *
+ * @param {string} nameOrCode
+ * @returns {Base}
+ * @throws {Error} Will throw if the encoding is not supported
+ */
+function encoding (nameOrCode) {
+  if (constants_1.names[nameOrCode]) {
+    return constants_1.names[nameOrCode]
+  } else if (constants_1.codes[nameOrCode]) {
+    return constants_1.codes[nameOrCode]
+  } else {
+    throw new Error(`Unsupported encoding: ${nameOrCode}`)
+  }
+}
+
+/**
+ * Get encoding from data
+ *
+ * @param {string|Buffer} data
+ * @returns {Base}
+ * @throws {Error} Will throw if the encoding is not supported
+ */
+function encodingFromData (data) {
+  if (Buffer.isBuffer(data)) {
+    data = data.toString();
+  }
+
+  return encoding(data[0])
+}
+
+exports = module.exports = multibase;
+exports.encode = encode;
+exports.decode = decode;
+exports.isEncoded = isEncoded;
+exports.encoding = encoding;
+exports.encodingFromData = encodingFromData;
+exports.names = Object.freeze(constants_1.names);
+exports.codes = Object.freeze(constants_1.codes);
+});
+
+var encode_1 = encode$1;
+
+var MSB = 0x80
+  , REST = 0x7F
+  , MSBALL = ~REST
+  , INT = Math.pow(2, 31);
+
+function encode$1(num, out, offset) {
+  out = out || [];
+  offset = offset || 0;
+  var oldOffset = offset;
+
+  while(num >= INT) {
+    out[offset++] = (num & 0xFF) | MSB;
+    num /= 128;
+  }
+  while(num & MSBALL) {
+    out[offset++] = (num & 0xFF) | MSB;
+    num >>>= 7;
+  }
+  out[offset] = num | 0;
+  
+  encode$1.bytes = offset - oldOffset + 1;
+  
+  return out
+}
+
+var decode$1 = read;
+
+var MSB$1 = 0x80
+  , REST$1 = 0x7F;
+
+function read(buf, offset) {
+  var res    = 0
+    , offset = offset || 0
+    , shift  = 0
+    , counter = offset
+    , b
+    , l = buf.length;
+
+  do {
+    if (counter >= l) {
+      read.bytes = 0;
+      throw new RangeError('Could not decode varint')
+    }
+    b = buf[counter++];
+    res += shift < 28
+      ? (b & REST$1) << shift
+      : (b & REST$1) * Math.pow(2, shift);
+    shift += 7;
+  } while (b >= MSB$1)
+
+  read.bytes = counter - offset;
+
+  return res
+}
+
+var N1 = Math.pow(2,  7);
+var N2 = Math.pow(2, 14);
+var N3 = Math.pow(2, 21);
+var N4 = Math.pow(2, 28);
+var N5 = Math.pow(2, 35);
+var N6 = Math.pow(2, 42);
+var N7 = Math.pow(2, 49);
+var N8 = Math.pow(2, 56);
+var N9 = Math.pow(2, 63);
+
+var length = function (value) {
+  return (
+    value < N1 ? 1
+  : value < N2 ? 2
+  : value < N3 ? 3
+  : value < N4 ? 4
+  : value < N5 ? 5
+  : value < N6 ? 6
+  : value < N7 ? 7
+  : value < N8 ? 8
+  : value < N9 ? 9
+  :              10
+  )
+};
+
+var varint = {
+    encode: encode_1
+  , decode: decode$1
+  , encodingLength: length
+};
+
+/* eslint quote-props: off */
+
+const names$1 = Object.freeze({
+  'identity': 0x00,
+  'sha1': 0x11,
+  'sha2-256': 0x12,
+  'sha2-512': 0x13,
+  'sha3-512': 0x14,
+  'sha3-384': 0x15,
+  'sha3-256': 0x16,
+  'sha3-224': 0x17,
+  'shake-128': 0x18,
+  'shake-256': 0x19,
+  'keccak-224': 0x1a,
+  'keccak-256': 0x1b,
+  'keccak-384': 0x1c,
+  'keccak-512': 0x1d,
+  'blake3': 0x1e,
+  'murmur3-128': 0x22,
+  'murmur3-32': 0x23,
+  'dbl-sha2-256': 0x56,
+  'md4': 0xd4,
+  'md5': 0xd5,
+  'bmt': 0xd6,
+  'sha2-256-trunc254-padded': 0x1012,
+  'ripemd-128': 0x1052,
+  'ripemd-160': 0x1053,
+  'ripemd-256': 0x1054,
+  'ripemd-320': 0x1055,
+  'x11': 0x1100,
+  'sm3-256': 0x534d,
+  'blake2b-8': 0xb201,
+  'blake2b-16': 0xb202,
+  'blake2b-24': 0xb203,
+  'blake2b-32': 0xb204,
+  'blake2b-40': 0xb205,
+  'blake2b-48': 0xb206,
+  'blake2b-56': 0xb207,
+  'blake2b-64': 0xb208,
+  'blake2b-72': 0xb209,
+  'blake2b-80': 0xb20a,
+  'blake2b-88': 0xb20b,
+  'blake2b-96': 0xb20c,
+  'blake2b-104': 0xb20d,
+  'blake2b-112': 0xb20e,
+  'blake2b-120': 0xb20f,
+  'blake2b-128': 0xb210,
+  'blake2b-136': 0xb211,
+  'blake2b-144': 0xb212,
+  'blake2b-152': 0xb213,
+  'blake2b-160': 0xb214,
+  'blake2b-168': 0xb215,
+  'blake2b-176': 0xb216,
+  'blake2b-184': 0xb217,
+  'blake2b-192': 0xb218,
+  'blake2b-200': 0xb219,
+  'blake2b-208': 0xb21a,
+  'blake2b-216': 0xb21b,
+  'blake2b-224': 0xb21c,
+  'blake2b-232': 0xb21d,
+  'blake2b-240': 0xb21e,
+  'blake2b-248': 0xb21f,
+  'blake2b-256': 0xb220,
+  'blake2b-264': 0xb221,
+  'blake2b-272': 0xb222,
+  'blake2b-280': 0xb223,
+  'blake2b-288': 0xb224,
+  'blake2b-296': 0xb225,
+  'blake2b-304': 0xb226,
+  'blake2b-312': 0xb227,
+  'blake2b-320': 0xb228,
+  'blake2b-328': 0xb229,
+  'blake2b-336': 0xb22a,
+  'blake2b-344': 0xb22b,
+  'blake2b-352': 0xb22c,
+  'blake2b-360': 0xb22d,
+  'blake2b-368': 0xb22e,
+  'blake2b-376': 0xb22f,
+  'blake2b-384': 0xb230,
+  'blake2b-392': 0xb231,
+  'blake2b-400': 0xb232,
+  'blake2b-408': 0xb233,
+  'blake2b-416': 0xb234,
+  'blake2b-424': 0xb235,
+  'blake2b-432': 0xb236,
+  'blake2b-440': 0xb237,
+  'blake2b-448': 0xb238,
+  'blake2b-456': 0xb239,
+  'blake2b-464': 0xb23a,
+  'blake2b-472': 0xb23b,
+  'blake2b-480': 0xb23c,
+  'blake2b-488': 0xb23d,
+  'blake2b-496': 0xb23e,
+  'blake2b-504': 0xb23f,
+  'blake2b-512': 0xb240,
+  'blake2s-8': 0xb241,
+  'blake2s-16': 0xb242,
+  'blake2s-24': 0xb243,
+  'blake2s-32': 0xb244,
+  'blake2s-40': 0xb245,
+  'blake2s-48': 0xb246,
+  'blake2s-56': 0xb247,
+  'blake2s-64': 0xb248,
+  'blake2s-72': 0xb249,
+  'blake2s-80': 0xb24a,
+  'blake2s-88': 0xb24b,
+  'blake2s-96': 0xb24c,
+  'blake2s-104': 0xb24d,
+  'blake2s-112': 0xb24e,
+  'blake2s-120': 0xb24f,
+  'blake2s-128': 0xb250,
+  'blake2s-136': 0xb251,
+  'blake2s-144': 0xb252,
+  'blake2s-152': 0xb253,
+  'blake2s-160': 0xb254,
+  'blake2s-168': 0xb255,
+  'blake2s-176': 0xb256,
+  'blake2s-184': 0xb257,
+  'blake2s-192': 0xb258,
+  'blake2s-200': 0xb259,
+  'blake2s-208': 0xb25a,
+  'blake2s-216': 0xb25b,
+  'blake2s-224': 0xb25c,
+  'blake2s-232': 0xb25d,
+  'blake2s-240': 0xb25e,
+  'blake2s-248': 0xb25f,
+  'blake2s-256': 0xb260,
+  'skein256-8': 0xb301,
+  'skein256-16': 0xb302,
+  'skein256-24': 0xb303,
+  'skein256-32': 0xb304,
+  'skein256-40': 0xb305,
+  'skein256-48': 0xb306,
+  'skein256-56': 0xb307,
+  'skein256-64': 0xb308,
+  'skein256-72': 0xb309,
+  'skein256-80': 0xb30a,
+  'skein256-88': 0xb30b,
+  'skein256-96': 0xb30c,
+  'skein256-104': 0xb30d,
+  'skein256-112': 0xb30e,
+  'skein256-120': 0xb30f,
+  'skein256-128': 0xb310,
+  'skein256-136': 0xb311,
+  'skein256-144': 0xb312,
+  'skein256-152': 0xb313,
+  'skein256-160': 0xb314,
+  'skein256-168': 0xb315,
+  'skein256-176': 0xb316,
+  'skein256-184': 0xb317,
+  'skein256-192': 0xb318,
+  'skein256-200': 0xb319,
+  'skein256-208': 0xb31a,
+  'skein256-216': 0xb31b,
+  'skein256-224': 0xb31c,
+  'skein256-232': 0xb31d,
+  'skein256-240': 0xb31e,
+  'skein256-248': 0xb31f,
+  'skein256-256': 0xb320,
+  'skein512-8': 0xb321,
+  'skein512-16': 0xb322,
+  'skein512-24': 0xb323,
+  'skein512-32': 0xb324,
+  'skein512-40': 0xb325,
+  'skein512-48': 0xb326,
+  'skein512-56': 0xb327,
+  'skein512-64': 0xb328,
+  'skein512-72': 0xb329,
+  'skein512-80': 0xb32a,
+  'skein512-88': 0xb32b,
+  'skein512-96': 0xb32c,
+  'skein512-104': 0xb32d,
+  'skein512-112': 0xb32e,
+  'skein512-120': 0xb32f,
+  'skein512-128': 0xb330,
+  'skein512-136': 0xb331,
+  'skein512-144': 0xb332,
+  'skein512-152': 0xb333,
+  'skein512-160': 0xb334,
+  'skein512-168': 0xb335,
+  'skein512-176': 0xb336,
+  'skein512-184': 0xb337,
+  'skein512-192': 0xb338,
+  'skein512-200': 0xb339,
+  'skein512-208': 0xb33a,
+  'skein512-216': 0xb33b,
+  'skein512-224': 0xb33c,
+  'skein512-232': 0xb33d,
+  'skein512-240': 0xb33e,
+  'skein512-248': 0xb33f,
+  'skein512-256': 0xb340,
+  'skein512-264': 0xb341,
+  'skein512-272': 0xb342,
+  'skein512-280': 0xb343,
+  'skein512-288': 0xb344,
+  'skein512-296': 0xb345,
+  'skein512-304': 0xb346,
+  'skein512-312': 0xb347,
+  'skein512-320': 0xb348,
+  'skein512-328': 0xb349,
+  'skein512-336': 0xb34a,
+  'skein512-344': 0xb34b,
+  'skein512-352': 0xb34c,
+  'skein512-360': 0xb34d,
+  'skein512-368': 0xb34e,
+  'skein512-376': 0xb34f,
+  'skein512-384': 0xb350,
+  'skein512-392': 0xb351,
+  'skein512-400': 0xb352,
+  'skein512-408': 0xb353,
+  'skein512-416': 0xb354,
+  'skein512-424': 0xb355,
+  'skein512-432': 0xb356,
+  'skein512-440': 0xb357,
+  'skein512-448': 0xb358,
+  'skein512-456': 0xb359,
+  'skein512-464': 0xb35a,
+  'skein512-472': 0xb35b,
+  'skein512-480': 0xb35c,
+  'skein512-488': 0xb35d,
+  'skein512-496': 0xb35e,
+  'skein512-504': 0xb35f,
+  'skein512-512': 0xb360,
+  'skein1024-8': 0xb361,
+  'skein1024-16': 0xb362,
+  'skein1024-24': 0xb363,
+  'skein1024-32': 0xb364,
+  'skein1024-40': 0xb365,
+  'skein1024-48': 0xb366,
+  'skein1024-56': 0xb367,
+  'skein1024-64': 0xb368,
+  'skein1024-72': 0xb369,
+  'skein1024-80': 0xb36a,
+  'skein1024-88': 0xb36b,
+  'skein1024-96': 0xb36c,
+  'skein1024-104': 0xb36d,
+  'skein1024-112': 0xb36e,
+  'skein1024-120': 0xb36f,
+  'skein1024-128': 0xb370,
+  'skein1024-136': 0xb371,
+  'skein1024-144': 0xb372,
+  'skein1024-152': 0xb373,
+  'skein1024-160': 0xb374,
+  'skein1024-168': 0xb375,
+  'skein1024-176': 0xb376,
+  'skein1024-184': 0xb377,
+  'skein1024-192': 0xb378,
+  'skein1024-200': 0xb379,
+  'skein1024-208': 0xb37a,
+  'skein1024-216': 0xb37b,
+  'skein1024-224': 0xb37c,
+  'skein1024-232': 0xb37d,
+  'skein1024-240': 0xb37e,
+  'skein1024-248': 0xb37f,
+  'skein1024-256': 0xb380,
+  'skein1024-264': 0xb381,
+  'skein1024-272': 0xb382,
+  'skein1024-280': 0xb383,
+  'skein1024-288': 0xb384,
+  'skein1024-296': 0xb385,
+  'skein1024-304': 0xb386,
+  'skein1024-312': 0xb387,
+  'skein1024-320': 0xb388,
+  'skein1024-328': 0xb389,
+  'skein1024-336': 0xb38a,
+  'skein1024-344': 0xb38b,
+  'skein1024-352': 0xb38c,
+  'skein1024-360': 0xb38d,
+  'skein1024-368': 0xb38e,
+  'skein1024-376': 0xb38f,
+  'skein1024-384': 0xb390,
+  'skein1024-392': 0xb391,
+  'skein1024-400': 0xb392,
+  'skein1024-408': 0xb393,
+  'skein1024-416': 0xb394,
+  'skein1024-424': 0xb395,
+  'skein1024-432': 0xb396,
+  'skein1024-440': 0xb397,
+  'skein1024-448': 0xb398,
+  'skein1024-456': 0xb399,
+  'skein1024-464': 0xb39a,
+  'skein1024-472': 0xb39b,
+  'skein1024-480': 0xb39c,
+  'skein1024-488': 0xb39d,
+  'skein1024-496': 0xb39e,
+  'skein1024-504': 0xb39f,
+  'skein1024-512': 0xb3a0,
+  'skein1024-520': 0xb3a1,
+  'skein1024-528': 0xb3a2,
+  'skein1024-536': 0xb3a3,
+  'skein1024-544': 0xb3a4,
+  'skein1024-552': 0xb3a5,
+  'skein1024-560': 0xb3a6,
+  'skein1024-568': 0xb3a7,
+  'skein1024-576': 0xb3a8,
+  'skein1024-584': 0xb3a9,
+  'skein1024-592': 0xb3aa,
+  'skein1024-600': 0xb3ab,
+  'skein1024-608': 0xb3ac,
+  'skein1024-616': 0xb3ad,
+  'skein1024-624': 0xb3ae,
+  'skein1024-632': 0xb3af,
+  'skein1024-640': 0xb3b0,
+  'skein1024-648': 0xb3b1,
+  'skein1024-656': 0xb3b2,
+  'skein1024-664': 0xb3b3,
+  'skein1024-672': 0xb3b4,
+  'skein1024-680': 0xb3b5,
+  'skein1024-688': 0xb3b6,
+  'skein1024-696': 0xb3b7,
+  'skein1024-704': 0xb3b8,
+  'skein1024-712': 0xb3b9,
+  'skein1024-720': 0xb3ba,
+  'skein1024-728': 0xb3bb,
+  'skein1024-736': 0xb3bc,
+  'skein1024-744': 0xb3bd,
+  'skein1024-752': 0xb3be,
+  'skein1024-760': 0xb3bf,
+  'skein1024-768': 0xb3c0,
+  'skein1024-776': 0xb3c1,
+  'skein1024-784': 0xb3c2,
+  'skein1024-792': 0xb3c3,
+  'skein1024-800': 0xb3c4,
+  'skein1024-808': 0xb3c5,
+  'skein1024-816': 0xb3c6,
+  'skein1024-824': 0xb3c7,
+  'skein1024-832': 0xb3c8,
+  'skein1024-840': 0xb3c9,
+  'skein1024-848': 0xb3ca,
+  'skein1024-856': 0xb3cb,
+  'skein1024-864': 0xb3cc,
+  'skein1024-872': 0xb3cd,
+  'skein1024-880': 0xb3ce,
+  'skein1024-888': 0xb3cf,
+  'skein1024-896': 0xb3d0,
+  'skein1024-904': 0xb3d1,
+  'skein1024-912': 0xb3d2,
+  'skein1024-920': 0xb3d3,
+  'skein1024-928': 0xb3d4,
+  'skein1024-936': 0xb3d5,
+  'skein1024-944': 0xb3d6,
+  'skein1024-952': 0xb3d7,
+  'skein1024-960': 0xb3d8,
+  'skein1024-968': 0xb3d9,
+  'skein1024-976': 0xb3da,
+  'skein1024-984': 0xb3db,
+  'skein1024-992': 0xb3dc,
+  'skein1024-1000': 0xb3dd,
+  'skein1024-1008': 0xb3de,
+  'skein1024-1016': 0xb3df,
+  'skein1024-1024': 0xb3e0,
+  'poseidon-bls12_381-a2-fc1': 0xb401,
+  'poseidon-bls12_381-a2-fc1-sc': 0xb402
+});
+
+var constants$1 = { names: names$1 };
+
+var src$2 = createCommonjsModule(function (module, exports) {
+
+const { Buffer } = buffer;
+
+
+const { names } = constants$1;
+
+const codes = {};
+
+for (const key in names) {
+  codes[names[key]] = key;
+}
+exports.names = names;
+exports.codes = Object.freeze(codes);
+
+/**
+ * Convert the given multihash to a hex encoded string.
+ *
+ * @param {Buffer} hash
+ * @returns {string}
+ */
+exports.toHexString = function toHexString (hash) {
+  if (!Buffer.isBuffer(hash)) {
+    throw new Error('must be passed a buffer')
+  }
+
+  return hash.toString('hex')
+};
+
+/**
+ * Convert the given hex encoded string to a multihash.
+ *
+ * @param {string} hash
+ * @returns {Buffer}
+ */
+exports.fromHexString = function fromHexString (hash) {
+  return Buffer.from(hash, 'hex')
+};
+
+/**
+ * Convert the given multihash to a base58 encoded string.
+ *
+ * @param {Buffer} hash
+ * @returns {string}
+ */
+exports.toB58String = function toB58String (hash) {
+  if (!Buffer.isBuffer(hash)) {
+    throw new Error('must be passed a buffer')
+  }
+
+  return src$1.encode('base58btc', hash).toString().slice(1)
+};
+
+/**
+ * Convert the given base58 encoded string to a multihash.
+ *
+ * @param {string|Buffer} hash
+ * @returns {Buffer}
+ */
+exports.fromB58String = function fromB58String (hash) {
+  let encoded = hash;
+  if (Buffer.isBuffer(hash)) {
+    encoded = hash.toString();
+  }
+
+  return src$1.decode('z' + encoded)
+};
+
+/**
+ * Decode a hash from the given multihash.
+ *
+ * @param {Buffer} buf
+ * @returns {{code: number, name: string, length: number, digest: Buffer}} result
+ */
+exports.decode = function decode (buf) {
+  if (!(Buffer.isBuffer(buf))) {
+    throw new Error('multihash must be a Buffer')
+  }
+
+  if (buf.length < 2) {
+    throw new Error('multihash too short. must be > 2 bytes.')
+  }
+
+  const code = varint.decode(buf);
+  if (!exports.isValidCode(code)) {
+    throw new Error(`multihash unknown function code: 0x${code.toString(16)}`)
+  }
+  buf = buf.slice(varint.decode.bytes);
+
+  const len = varint.decode(buf);
+  if (len < 0) {
+    throw new Error(`multihash invalid length: ${len}`)
+  }
+  buf = buf.slice(varint.decode.bytes);
+
+  if (buf.length !== len) {
+    throw new Error(`multihash length inconsistent: 0x${buf.toString('hex')}`)
+  }
+
+  return {
+    code,
+    name: codes[code],
+    length: len,
+    digest: buf
+  }
+};
+
+/**
+ *  Encode a hash digest along with the specified function code.
+ *
+ * > **Note:** the length is derived from the length of the digest itself.
+ *
+ * @param {Buffer} digest
+ * @param {string|number} code
+ * @param {number} [length]
+ * @returns {Buffer}
+ */
+exports.encode = function encode (digest, code, length) {
+  if (!digest || code === undefined) {
+    throw new Error('multihash encode requires at least two args: digest, code')
+  }
+
+  // ensure it's a hashfunction code.
+  const hashfn = exports.coerceCode(code);
+
+  if (!(Buffer.isBuffer(digest))) {
+    throw new Error('digest should be a Buffer')
+  }
+
+  if (length == null) {
+    length = digest.length;
+  }
+
+  if (length && digest.length !== length) {
+    throw new Error('digest length should be equal to specified length.')
+  }
+
+  return Buffer.concat([
+    Buffer.from(varint.encode(hashfn)),
+    Buffer.from(varint.encode(length)),
+    digest
+  ])
+};
+
+/**
+ * Converts a hash function name into the matching code.
+ * If passed a number it will return the number if it's a valid code.
+ * @param {string|number} name
+ * @returns {number}
+ */
+exports.coerceCode = function coerceCode (name) {
+  let code = name;
+
+  if (typeof name === 'string') {
+    if (names[name] === undefined) {
+      throw new Error(`Unrecognized hash function named: ${name}`)
+    }
+    code = names[name];
+  }
+
+  if (typeof code !== 'number') {
+    throw new Error(`Hash function code should be a number. Got: ${code}`)
+  }
+
+  if (codes[code] === undefined && !exports.isAppCode(code)) {
+    throw new Error(`Unrecognized function code: ${code}`)
+  }
+
+  return code
+};
+
+/**
+ * Checks wether a code is part of the app range
+ *
+ * @param {number} code
+ * @returns {boolean}
+ */
+exports.isAppCode = function appCode (code) {
+  return code > 0 && code < 0x10
+};
+
+/**
+ * Checks whether a multihash code is valid.
+ *
+ * @param {number} code
+ * @returns {boolean}
+ */
+exports.isValidCode = function validCode (code) {
+  if (exports.isAppCode(code)) {
+    return true
+  }
+
+  if (codes[code]) {
+    return true
+  }
+
+  return false
+};
+
+/**
+ * Check if the given buffer is a valid multihash. Throws an error if it is not valid.
+ *
+ * @param {Buffer} multihash
+ * @returns {undefined}
+ * @throws {Error}
+ */
+function validate (multihash) {
+  exports.decode(multihash); // throws if bad.
+}
+exports.validate = validate;
+
+/**
+ * Returns a prefix from a valid multihash. Throws an error if it is not valid.
+ *
+ * @param {Buffer} multihash
+ * @returns {undefined}
+ * @throws {Error}
+ */
+exports.prefix = function prefix (multihash) {
+  validate(multihash);
+
+  return multihash.slice(0, 2)
+};
+});
+
+var identity$1 = 0;
+var ip4 = 4;
+var tcp = 6;
+var sha1 = 17;
+var blake3 = 30;
+var dccp = 33;
+var ip6 = 41;
+var ip6zone = 42;
+var path = 47;
+var multicodec = 48;
+var multihash = 49;
+var multiaddr = 50;
+var multibase = 51;
+var dns = 53;
+var dns4 = 54;
+var dns6 = 55;
+var dnsaddr = 56;
+var protobuf = 80;
+var cbor = 81;
+var raw = 85;
+var rlp = 96;
+var bencode = 99;
+var sctp = 132;
+var md4 = 212;
+var md5 = 213;
+var bmt = 214;
+var zeronet = 230;
+var udp = 273;
+var udt = 301;
+var utp = 302;
+var unix = 400;
+var p2p = 421;
+var ipfs = 421;
+var https = 443;
+var onion = 444;
+var onion3 = 445;
+var garlic64 = 446;
+var garlic32 = 447;
+var tls = 448;
+var quic = 460;
+var ws = 477;
+var wss = 478;
+var http = 480;
+var json = 512;
+var messagepack = 513;
+var x11 = 4352;
+var baseTable = {
+	identity: identity$1,
+	ip4: ip4,
+	tcp: tcp,
+	sha1: sha1,
+	"sha2-256": 18,
+	"sha2-512": 19,
+	"sha3-512": 20,
+	"sha3-384": 21,
+	"sha3-256": 22,
+	"sha3-224": 23,
+	"shake-128": 24,
+	"shake-256": 25,
+	"keccak-224": 26,
+	"keccak-256": 27,
+	"keccak-384": 28,
+	"keccak-512": 29,
+	blake3: blake3,
+	dccp: dccp,
+	"murmur3-128": 34,
+	"murmur3-32": 35,
+	ip6: ip6,
+	ip6zone: ip6zone,
+	path: path,
+	multicodec: multicodec,
+	multihash: multihash,
+	multiaddr: multiaddr,
+	multibase: multibase,
+	dns: dns,
+	dns4: dns4,
+	dns6: dns6,
+	dnsaddr: dnsaddr,
+	protobuf: protobuf,
+	cbor: cbor,
+	raw: raw,
+	"dbl-sha2-256": 86,
+	rlp: rlp,
+	bencode: bencode,
+	"dag-pb": 112,
+	"dag-cbor": 113,
+	"libp2p-key": 114,
+	"git-raw": 120,
+	"torrent-info": 123,
+	"torrent-file": 124,
+	"leofcoin-block": 129,
+	"leofcoin-tx": 130,
+	"leofcoin-pr": 131,
+	sctp: sctp,
+	"dag-jose": 133,
+	"dag-cose": 134,
+	"eth-block": 144,
+	"eth-block-list": 145,
+	"eth-tx-trie": 146,
+	"eth-tx": 147,
+	"eth-tx-receipt-trie": 148,
+	"eth-tx-receipt": 149,
+	"eth-state-trie": 150,
+	"eth-account-snapshot": 151,
+	"eth-storage-trie": 152,
+	"bitcoin-block": 176,
+	"bitcoin-tx": 177,
+	"bitcoin-witness-commitment": 178,
+	"zcash-block": 192,
+	"zcash-tx": 193,
+	"stellar-block": 208,
+	"stellar-tx": 209,
+	md4: md4,
+	md5: md5,
+	bmt: bmt,
+	"decred-block": 224,
+	"decred-tx": 225,
+	"ipld-ns": 226,
+	"ipfs-ns": 227,
+	"swarm-ns": 228,
+	"ipns-ns": 229,
+	zeronet: zeronet,
+	"secp256k1-pub": 231,
+	"bls12_381-g1-pub": 234,
+	"bls12_381-g2-pub": 235,
+	"x25519-pub": 236,
+	"ed25519-pub": 237,
+	"dash-block": 240,
+	"dash-tx": 241,
+	"swarm-manifest": 250,
+	"swarm-feed": 251,
+	udp: udp,
+	"p2p-webrtc-star": 275,
+	"p2p-webrtc-direct": 276,
+	"p2p-stardust": 277,
+	"p2p-circuit": 290,
+	"dag-json": 297,
+	udt: udt,
+	utp: utp,
+	unix: unix,
+	p2p: p2p,
+	ipfs: ipfs,
+	https: https,
+	onion: onion,
+	onion3: onion3,
+	garlic64: garlic64,
+	garlic32: garlic32,
+	tls: tls,
+	quic: quic,
+	ws: ws,
+	wss: wss,
+	"p2p-websocket-star": 479,
+	http: http,
+	json: json,
+	messagepack: messagepack,
+	"libp2p-peer-record": 769,
+	"sha2-256-trunc254-padded": 4114,
+	"ripemd-128": 4178,
+	"ripemd-160": 4179,
+	"ripemd-256": 4180,
+	"ripemd-320": 4181,
+	x11: x11,
+	"sm3-256": 21325,
+	"blake2b-8": 45569,
+	"blake2b-16": 45570,
+	"blake2b-24": 45571,
+	"blake2b-32": 45572,
+	"blake2b-40": 45573,
+	"blake2b-48": 45574,
+	"blake2b-56": 45575,
+	"blake2b-64": 45576,
+	"blake2b-72": 45577,
+	"blake2b-80": 45578,
+	"blake2b-88": 45579,
+	"blake2b-96": 45580,
+	"blake2b-104": 45581,
+	"blake2b-112": 45582,
+	"blake2b-120": 45583,
+	"blake2b-128": 45584,
+	"blake2b-136": 45585,
+	"blake2b-144": 45586,
+	"blake2b-152": 45587,
+	"blake2b-160": 45588,
+	"blake2b-168": 45589,
+	"blake2b-176": 45590,
+	"blake2b-184": 45591,
+	"blake2b-192": 45592,
+	"blake2b-200": 45593,
+	"blake2b-208": 45594,
+	"blake2b-216": 45595,
+	"blake2b-224": 45596,
+	"blake2b-232": 45597,
+	"blake2b-240": 45598,
+	"blake2b-248": 45599,
+	"blake2b-256": 45600,
+	"blake2b-264": 45601,
+	"blake2b-272": 45602,
+	"blake2b-280": 45603,
+	"blake2b-288": 45604,
+	"blake2b-296": 45605,
+	"blake2b-304": 45606,
+	"blake2b-312": 45607,
+	"blake2b-320": 45608,
+	"blake2b-328": 45609,
+	"blake2b-336": 45610,
+	"blake2b-344": 45611,
+	"blake2b-352": 45612,
+	"blake2b-360": 45613,
+	"blake2b-368": 45614,
+	"blake2b-376": 45615,
+	"blake2b-384": 45616,
+	"blake2b-392": 45617,
+	"blake2b-400": 45618,
+	"blake2b-408": 45619,
+	"blake2b-416": 45620,
+	"blake2b-424": 45621,
+	"blake2b-432": 45622,
+	"blake2b-440": 45623,
+	"blake2b-448": 45624,
+	"blake2b-456": 45625,
+	"blake2b-464": 45626,
+	"blake2b-472": 45627,
+	"blake2b-480": 45628,
+	"blake2b-488": 45629,
+	"blake2b-496": 45630,
+	"blake2b-504": 45631,
+	"blake2b-512": 45632,
+	"blake2s-8": 45633,
+	"blake2s-16": 45634,
+	"blake2s-24": 45635,
+	"blake2s-32": 45636,
+	"blake2s-40": 45637,
+	"blake2s-48": 45638,
+	"blake2s-56": 45639,
+	"blake2s-64": 45640,
+	"blake2s-72": 45641,
+	"blake2s-80": 45642,
+	"blake2s-88": 45643,
+	"blake2s-96": 45644,
+	"blake2s-104": 45645,
+	"blake2s-112": 45646,
+	"blake2s-120": 45647,
+	"blake2s-128": 45648,
+	"blake2s-136": 45649,
+	"blake2s-144": 45650,
+	"blake2s-152": 45651,
+	"blake2s-160": 45652,
+	"blake2s-168": 45653,
+	"blake2s-176": 45654,
+	"blake2s-184": 45655,
+	"blake2s-192": 45656,
+	"blake2s-200": 45657,
+	"blake2s-208": 45658,
+	"blake2s-216": 45659,
+	"blake2s-224": 45660,
+	"blake2s-232": 45661,
+	"blake2s-240": 45662,
+	"blake2s-248": 45663,
+	"blake2s-256": 45664,
+	"skein256-8": 45825,
+	"skein256-16": 45826,
+	"skein256-24": 45827,
+	"skein256-32": 45828,
+	"skein256-40": 45829,
+	"skein256-48": 45830,
+	"skein256-56": 45831,
+	"skein256-64": 45832,
+	"skein256-72": 45833,
+	"skein256-80": 45834,
+	"skein256-88": 45835,
+	"skein256-96": 45836,
+	"skein256-104": 45837,
+	"skein256-112": 45838,
+	"skein256-120": 45839,
+	"skein256-128": 45840,
+	"skein256-136": 45841,
+	"skein256-144": 45842,
+	"skein256-152": 45843,
+	"skein256-160": 45844,
+	"skein256-168": 45845,
+	"skein256-176": 45846,
+	"skein256-184": 45847,
+	"skein256-192": 45848,
+	"skein256-200": 45849,
+	"skein256-208": 45850,
+	"skein256-216": 45851,
+	"skein256-224": 45852,
+	"skein256-232": 45853,
+	"skein256-240": 45854,
+	"skein256-248": 45855,
+	"skein256-256": 45856,
+	"skein512-8": 45857,
+	"skein512-16": 45858,
+	"skein512-24": 45859,
+	"skein512-32": 45860,
+	"skein512-40": 45861,
+	"skein512-48": 45862,
+	"skein512-56": 45863,
+	"skein512-64": 45864,
+	"skein512-72": 45865,
+	"skein512-80": 45866,
+	"skein512-88": 45867,
+	"skein512-96": 45868,
+	"skein512-104": 45869,
+	"skein512-112": 45870,
+	"skein512-120": 45871,
+	"skein512-128": 45872,
+	"skein512-136": 45873,
+	"skein512-144": 45874,
+	"skein512-152": 45875,
+	"skein512-160": 45876,
+	"skein512-168": 45877,
+	"skein512-176": 45878,
+	"skein512-184": 45879,
+	"skein512-192": 45880,
+	"skein512-200": 45881,
+	"skein512-208": 45882,
+	"skein512-216": 45883,
+	"skein512-224": 45884,
+	"skein512-232": 45885,
+	"skein512-240": 45886,
+	"skein512-248": 45887,
+	"skein512-256": 45888,
+	"skein512-264": 45889,
+	"skein512-272": 45890,
+	"skein512-280": 45891,
+	"skein512-288": 45892,
+	"skein512-296": 45893,
+	"skein512-304": 45894,
+	"skein512-312": 45895,
+	"skein512-320": 45896,
+	"skein512-328": 45897,
+	"skein512-336": 45898,
+	"skein512-344": 45899,
+	"skein512-352": 45900,
+	"skein512-360": 45901,
+	"skein512-368": 45902,
+	"skein512-376": 45903,
+	"skein512-384": 45904,
+	"skein512-392": 45905,
+	"skein512-400": 45906,
+	"skein512-408": 45907,
+	"skein512-416": 45908,
+	"skein512-424": 45909,
+	"skein512-432": 45910,
+	"skein512-440": 45911,
+	"skein512-448": 45912,
+	"skein512-456": 45913,
+	"skein512-464": 45914,
+	"skein512-472": 45915,
+	"skein512-480": 45916,
+	"skein512-488": 45917,
+	"skein512-496": 45918,
+	"skein512-504": 45919,
+	"skein512-512": 45920,
+	"skein1024-8": 45921,
+	"skein1024-16": 45922,
+	"skein1024-24": 45923,
+	"skein1024-32": 45924,
+	"skein1024-40": 45925,
+	"skein1024-48": 45926,
+	"skein1024-56": 45927,
+	"skein1024-64": 45928,
+	"skein1024-72": 45929,
+	"skein1024-80": 45930,
+	"skein1024-88": 45931,
+	"skein1024-96": 45932,
+	"skein1024-104": 45933,
+	"skein1024-112": 45934,
+	"skein1024-120": 45935,
+	"skein1024-128": 45936,
+	"skein1024-136": 45937,
+	"skein1024-144": 45938,
+	"skein1024-152": 45939,
+	"skein1024-160": 45940,
+	"skein1024-168": 45941,
+	"skein1024-176": 45942,
+	"skein1024-184": 45943,
+	"skein1024-192": 45944,
+	"skein1024-200": 45945,
+	"skein1024-208": 45946,
+	"skein1024-216": 45947,
+	"skein1024-224": 45948,
+	"skein1024-232": 45949,
+	"skein1024-240": 45950,
+	"skein1024-248": 45951,
+	"skein1024-256": 45952,
+	"skein1024-264": 45953,
+	"skein1024-272": 45954,
+	"skein1024-280": 45955,
+	"skein1024-288": 45956,
+	"skein1024-296": 45957,
+	"skein1024-304": 45958,
+	"skein1024-312": 45959,
+	"skein1024-320": 45960,
+	"skein1024-328": 45961,
+	"skein1024-336": 45962,
+	"skein1024-344": 45963,
+	"skein1024-352": 45964,
+	"skein1024-360": 45965,
+	"skein1024-368": 45966,
+	"skein1024-376": 45967,
+	"skein1024-384": 45968,
+	"skein1024-392": 45969,
+	"skein1024-400": 45970,
+	"skein1024-408": 45971,
+	"skein1024-416": 45972,
+	"skein1024-424": 45973,
+	"skein1024-432": 45974,
+	"skein1024-440": 45975,
+	"skein1024-448": 45976,
+	"skein1024-456": 45977,
+	"skein1024-464": 45978,
+	"skein1024-472": 45979,
+	"skein1024-480": 45980,
+	"skein1024-488": 45981,
+	"skein1024-496": 45982,
+	"skein1024-504": 45983,
+	"skein1024-512": 45984,
+	"skein1024-520": 45985,
+	"skein1024-528": 45986,
+	"skein1024-536": 45987,
+	"skein1024-544": 45988,
+	"skein1024-552": 45989,
+	"skein1024-560": 45990,
+	"skein1024-568": 45991,
+	"skein1024-576": 45992,
+	"skein1024-584": 45993,
+	"skein1024-592": 45994,
+	"skein1024-600": 45995,
+	"skein1024-608": 45996,
+	"skein1024-616": 45997,
+	"skein1024-624": 45998,
+	"skein1024-632": 45999,
+	"skein1024-640": 46000,
+	"skein1024-648": 46001,
+	"skein1024-656": 46002,
+	"skein1024-664": 46003,
+	"skein1024-672": 46004,
+	"skein1024-680": 46005,
+	"skein1024-688": 46006,
+	"skein1024-696": 46007,
+	"skein1024-704": 46008,
+	"skein1024-712": 46009,
+	"skein1024-720": 46010,
+	"skein1024-728": 46011,
+	"skein1024-736": 46012,
+	"skein1024-744": 46013,
+	"skein1024-752": 46014,
+	"skein1024-760": 46015,
+	"skein1024-768": 46016,
+	"skein1024-776": 46017,
+	"skein1024-784": 46018,
+	"skein1024-792": 46019,
+	"skein1024-800": 46020,
+	"skein1024-808": 46021,
+	"skein1024-816": 46022,
+	"skein1024-824": 46023,
+	"skein1024-832": 46024,
+	"skein1024-840": 46025,
+	"skein1024-848": 46026,
+	"skein1024-856": 46027,
+	"skein1024-864": 46028,
+	"skein1024-872": 46029,
+	"skein1024-880": 46030,
+	"skein1024-888": 46031,
+	"skein1024-896": 46032,
+	"skein1024-904": 46033,
+	"skein1024-912": 46034,
+	"skein1024-920": 46035,
+	"skein1024-928": 46036,
+	"skein1024-936": 46037,
+	"skein1024-944": 46038,
+	"skein1024-952": 46039,
+	"skein1024-960": 46040,
+	"skein1024-968": 46041,
+	"skein1024-976": 46042,
+	"skein1024-984": 46043,
+	"skein1024-992": 46044,
+	"skein1024-1000": 46045,
+	"skein1024-1008": 46046,
+	"skein1024-1016": 46047,
+	"skein1024-1024": 46048,
+	"poseidon-bls12_381-a2-fc1": 46081,
+	"poseidon-bls12_381-a2-fc1-sc": 46082,
+	"zeroxcert-imprint-256": 52753,
+	"fil-commitment-unsealed": 61697,
+	"fil-commitment-sealed": 61698,
+	"holochain-adr-v0": 8417572,
+	"holochain-adr-v1": 8483108,
+	"holochain-key-v0": 9728292,
+	"holochain-key-v1": 9793828,
+	"holochain-sig-v0": 10645796,
+	"holochain-sig-v1": 10711332
+};
+
+var baseTable$1 = {
+	__proto__: null,
+	identity: identity$1,
+	ip4: ip4,
+	tcp: tcp,
+	sha1: sha1,
+	blake3: blake3,
+	dccp: dccp,
+	ip6: ip6,
+	ip6zone: ip6zone,
+	path: path,
+	multicodec: multicodec,
+	multihash: multihash,
+	multiaddr: multiaddr,
+	multibase: multibase,
+	dns: dns,
+	dns4: dns4,
+	dns6: dns6,
+	dnsaddr: dnsaddr,
+	protobuf: protobuf,
+	cbor: cbor,
+	raw: raw,
+	rlp: rlp,
+	bencode: bencode,
+	sctp: sctp,
+	md4: md4,
+	md5: md5,
+	bmt: bmt,
+	zeronet: zeronet,
+	udp: udp,
+	udt: udt,
+	utp: utp,
+	unix: unix,
+	p2p: p2p,
+	ipfs: ipfs,
+	https: https,
+	onion: onion,
+	onion3: onion3,
+	garlic64: garlic64,
+	garlic32: garlic32,
+	tls: tls,
+	quic: quic,
+	ws: ws,
+	wss: wss,
+	http: http,
+	json: json,
+	messagepack: messagepack,
+	x11: x11,
+	'default': baseTable
+};
+
+var codecs = getCjsExportFromNamespace(baseTable$1);
+
+// map for hexString -> codecName
+const nameTable = new Map();
+
+for (const encodingName in codecs) {
+  const code = codecs[encodingName];
+  nameTable.set(code, encodingName);
+}
+
+var intTable = Object.freeze(nameTable);
+
+const { Buffer: Buffer$2 } = buffer;
+
+var util = {
+  numberToBuffer,
+  bufferToNumber,
+  varintBufferEncode,
+  varintBufferDecode,
+  varintEncode
+};
+
+function bufferToNumber (buf) {
+  return parseInt(buf.toString('hex'), 16)
+}
+
+function numberToBuffer (num) {
+  let hexString = num.toString(16);
+  if (hexString.length % 2 === 1) {
+    hexString = '0' + hexString;
+  }
+  return Buffer$2.from(hexString, 'hex')
+}
+
+function varintBufferEncode (input) {
+  return Buffer$2.from(varint.encode(bufferToNumber(input)))
+}
+
+function varintBufferDecode (input) {
+  return numberToBuffer(varint.decode(input))
+}
+
+function varintEncode (num) {
+  return Buffer$2.from(varint.encode(num))
+}
+
+const varintEncode$1 = util.varintEncode;
+
+// map for codecName -> codeVarintBuffer
+const varintTable = {};
+
+for (const encodingName in codecs) {
+  const code = codecs[encodingName];
+  varintTable[encodingName] = varintEncode$1(code);
+}
+
+var varintTable_1 = Object.freeze(varintTable);
+
+// map for codecConstant -> code
+const constants$2 = {};
+
+for (const [name, code] of Object.entries(codecs)) {
+  constants$2[name.toUpperCase().replace(/-/g, '_')] = code;
+}
+
+var constants_1$1 = Object.freeze(constants$2);
+
+// map for code -> print friendly name
+const tableByCode = {};
+
+for (const [name, code] of Object.entries(codecs)) {
+  if (tableByCode[code] === undefined) tableByCode[code] = name;
+}
+
+var print = Object.freeze(tableByCode);
+
+var src$3 = createCommonjsModule(function (module, exports) {
+
+const { Buffer } = buffer;
+
+
+
+
+
+exports = module.exports;
+
+/**
+ * Prefix a buffer with a multicodec-packed.
+ *
+ * @param {string|number} multicodecStrOrCode
+ * @param {Buffer} data
+ * @returns {Buffer}
+ */
+exports.addPrefix = (multicodecStrOrCode, data) => {
+  let prefix;
+
+  if (Buffer.isBuffer(multicodecStrOrCode)) {
+    prefix = util.varintBufferEncode(multicodecStrOrCode);
+  } else {
+    if (varintTable_1[multicodecStrOrCode]) {
+      prefix = varintTable_1[multicodecStrOrCode];
+    } else {
+      throw new Error('multicodec not recognized')
+    }
+  }
+  return Buffer.concat([prefix, data])
+};
+
+/**
+ * Decapsulate the multicodec-packed prefix from the data.
+ *
+ * @param {Buffer} data
+ * @returns {Buffer}
+ */
+exports.rmPrefix = (data) => {
+  varint.decode(data);
+  return data.slice(varint.decode.bytes)
+};
+
+/**
+ * Get the codec of the prefixed data.
+ * @param {Buffer} prefixedData
+ * @returns {string}
+ */
+exports.getCodec = (prefixedData) => {
+  const code = varint.decode(prefixedData);
+  const codecName = intTable.get(code);
+  if (codecName === undefined) {
+    throw new Error(`Code ${code} not found`)
+  }
+  return codecName
+};
+
+/**
+ * Get the name of the codec.
+ * @param {number} codec
+ * @returns {string}
+ */
+exports.getName = (codec) => {
+  return intTable.get(codec)
+};
+
+/**
+ * Get the code of the codec
+ * @param {string} name
+ * @returns {number}
+ */
+exports.getNumber = (name) => {
+  const code = varintTable_1[name];
+  if (code === undefined) {
+    throw new Error('Codec `' + name + '` not found')
+  }
+  return util.varintBufferDecode(code)[0]
+};
+
+/**
+ * Get the code of the prefixed data.
+ * @param {Buffer} prefixedData
+ * @returns {number}
+ */
+exports.getCode = (prefixedData) => {
+  return varint.decode(prefixedData)
+};
+
+/**
+ * Get the code as varint of a codec name.
+ * @param {string} codecName
+ * @returns {Buffer}
+ */
+exports.getCodeVarint = (codecName) => {
+  const code = varintTable_1[codecName];
+  if (code === undefined) {
+    throw new Error('Codec `' + codecName + '` not found')
+  }
+  return code
+};
+
+/**
+ * Get the varint of a code.
+ * @param {Number} code
+ * @returns {Array.<number>}
+ */
+exports.getVarint = (code) => {
+  return varint.encode(code)
+};
+
+// Make the constants top-level constants
+
+Object.assign(exports, constants_1$1);
+
+// Human friendly names for printing, e.g. in error messages
+exports.print = print;
+});
+
+const { Buffer: Buffer$3 } = buffer;
+var CIDUtil = {
+  /**
+   * Test if the given input is a valid CID object.
+   * Returns an error message if it is not.
+   * Returns undefined if it is a valid CID.
+   *
+   * @param {any} other
+   * @returns {string}
+   */
+  checkCIDComponents: function (other) {
+    if (other == null) {
+      return 'null values are not valid CIDs'
+    }
+
+    if (!(other.version === 0 || other.version === 1)) {
+      return 'Invalid version, must be a number equal to 1 or 0'
+    }
+
+    if (typeof other.codec !== 'string') {
+      return 'codec must be string'
+    }
+
+    if (other.version === 0) {
+      if (other.codec !== 'dag-pb') {
+        return "codec must be 'dag-pb' for CIDv0"
+      }
+      if (other.multibaseName !== 'base58btc') {
+        return "multibaseName must be 'base58btc' for CIDv0"
+      }
+    }
+
+    if (!Buffer$3.isBuffer(other.multihash)) {
+      return 'multihash must be a Buffer'
+    }
+
+    try {
+      src$2.validate(other.multihash);
+    } catch (err) {
+      let errorMsg = err.message;
+      if (!errorMsg) { // Just in case mh.validate() throws an error with empty error message
+        errorMsg = 'Multihash validation failed';
+      }
+      return errorMsg
+    }
+  }
+};
+
+var cidUtil = CIDUtil;
+
+function withIs(Class, { className, symbolName }) {
+    const symbol = Symbol.for(symbolName);
+
+    const ClassIsWrapper = {
+        // The code below assigns the class wrapper to an object to trick
+        // JavaScript engines to show the name of the extended class when
+        // logging an instances.
+        // We are assigning an anonymous class (class wrapper) to the object
+        // with key `className` to keep the correct name.
+        // If this is not supported it falls back to logging `ClassIsWrapper`.
+        [className]: class extends Class {
+            constructor(...args) {
+                super(...args);
+                Object.defineProperty(this, symbol, { value: true });
+            }
+
+            get [Symbol.toStringTag]() {
+                return className;
+            }
+        },
+    }[className];
+
+    ClassIsWrapper[`is${className}`] = (obj) => !!(obj && obj[symbol]);
+
+    return ClassIsWrapper;
+}
+
+function withIsProto(Class, { className, symbolName, withoutNew }) {
+    const symbol = Symbol.for(symbolName);
+
+    /* eslint-disable object-shorthand */
+    const ClassIsWrapper = {
+        [className]: function (...args) {
+            if (withoutNew && !(this instanceof ClassIsWrapper)) {
+                return new ClassIsWrapper(...args);
+            }
+
+            const _this = Class.call(this, ...args) || this;
+
+            if (_this && !_this[symbol]) {
+                Object.defineProperty(_this, symbol, { value: true });
+            }
+
+            return _this;
+        },
+    }[className];
+    /* eslint-enable object-shorthand */
+
+    ClassIsWrapper.prototype = Object.create(Class.prototype);
+    ClassIsWrapper.prototype.constructor = ClassIsWrapper;
+
+    Object.defineProperty(ClassIsWrapper.prototype, Symbol.toStringTag, {
+        get() {
+            return className;
+        },
+    });
+
+    ClassIsWrapper[`is${className}`] = (obj) => !!(obj && obj[symbol]);
+
+    return ClassIsWrapper;
+}
+
+var classIs = withIs;
+var proto = withIsProto;
+classIs.proto = proto;
+
+const { Buffer: Buffer$4 } = buffer;
+
+
+
+
+
+
+
+/**
+ * @typedef {Object} SerializedCID
+ * @param {string} codec
+ * @param {number} version
+ * @param {Buffer} multihash
+ */
+
+/**
+ * Test if the given input is a CID.
+ * @function isCID
+ * @memberof CID
+ * @static
+ * @param {any} other
+ * @returns {bool}
+ */
+
+/**
+ * Class representing a CID `<mbase><version><mcodec><mhash>`
+ * , as defined in [ipld/cid](https://github.com/multiformats/cid).
+ * @class CID
+ */
+class CID {
+  /**
+   * Create a new CID.
+   *
+   * The algorithm for argument input is roughly:
+   * ```
+   * if (cid)
+   *   -> create a copy
+   * else if (str)
+   *   if (1st char is on multibase table) -> CID String
+   *   else -> bs58 encoded multihash
+   * else if (Buffer)
+   *   if (1st byte is 0 or 1) -> CID
+   *   else -> multihash
+   * else if (Number)
+   *   -> construct CID by parts
+   * ```
+   *
+   * @param {string|Buffer|CID} version
+   * @param {string} [codec]
+   * @param {Buffer} [multihash]
+   * @param {string} [multibaseName]
+   *
+   * @example
+   * new CID(<version>, <codec>, <multihash>, <multibaseName>)
+   * new CID(<cidStr>)
+   * new CID(<cid.buffer>)
+   * new CID(<multihash>)
+   * new CID(<bs58 encoded multihash>)
+   * new CID(<cid>)
+   */
+  constructor (version, codec, multihash, multibaseName) {
+    if (_CID.isCID(version)) {
+      // version is an exising CID instance
+      const cid = version;
+      this.version = cid.version;
+      this.codec = cid.codec;
+      this.multihash = Buffer$4.from(cid.multihash);
+      // Default guard for when a CID < 0.7 is passed with no multibaseName
+      this.multibaseName = cid.multibaseName || (cid.version === 0 ? 'base58btc' : 'base32');
+      return
+    }
+
+    if (typeof version === 'string') {
+      // e.g. 'base32' or false
+      const baseName = src$1.isEncoded(version);
+      if (baseName) {
+        // version is a CID String encoded with multibase, so v1
+        const cid = src$1.decode(version);
+        this.version = parseInt(cid.slice(0, 1).toString('hex'), 16);
+        this.codec = src$3.getCodec(cid.slice(1));
+        this.multihash = src$3.rmPrefix(cid.slice(1));
+        this.multibaseName = baseName;
+      } else {
+        // version is a base58btc string multihash, so v0
+        this.version = 0;
+        this.codec = 'dag-pb';
+        this.multihash = src$2.fromB58String(version);
+        this.multibaseName = 'base58btc';
+      }
+      CID.validateCID(this);
+      Object.defineProperty(this, 'string', { value: version });
+      return
+    }
+
+    if (Buffer$4.isBuffer(version)) {
+      const firstByte = version.slice(0, 1);
+      const v = parseInt(firstByte.toString('hex'), 16);
+      if (v === 1) {
+        // version is a CID buffer
+        const cid = version;
+        this.version = v;
+        this.codec = src$3.getCodec(cid.slice(1));
+        this.multihash = src$3.rmPrefix(cid.slice(1));
+        this.multibaseName = 'base32';
+      } else {
+        // version is a raw multihash buffer, so v0
+        this.version = 0;
+        this.codec = 'dag-pb';
+        this.multihash = version;
+        this.multibaseName = 'base58btc';
+      }
+      CID.validateCID(this);
+      return
+    }
+
+    // otherwise, assemble the CID from the parameters
+
+    /**
+     * @type {number}
+     */
+    this.version = version;
+
+    /**
+     * @type {string}
+     */
+    this.codec = codec;
+
+    /**
+     * @type {Buffer}
+     */
+    this.multihash = multihash;
+
+    /**
+     * @type {string}
+     */
+    this.multibaseName = multibaseName || (version === 0 ? 'base58btc' : 'base32');
+
+    CID.validateCID(this);
+  }
+
+  /**
+   * The CID as a `Buffer`
+   *
+   * @return {Buffer}
+   * @readonly
+   *
+   * @memberOf CID
+   */
+  get buffer () {
+    let buffer = this._buffer;
+
+    if (!buffer) {
+      if (this.version === 0) {
+        buffer = this.multihash;
+      } else if (this.version === 1) {
+        buffer = Buffer$4.concat([
+          Buffer$4.from('01', 'hex'),
+          src$3.getCodeVarint(this.codec),
+          this.multihash
+        ]);
+      } else {
+        throw new Error('unsupported version')
+      }
+
+      // Cache this buffer so it doesn't have to be recreated
+      Object.defineProperty(this, '_buffer', { value: buffer });
+    }
+
+    return buffer
+  }
+
+  /**
+   * Get the prefix of the CID.
+   *
+   * @returns {Buffer}
+   * @readonly
+   */
+  get prefix () {
+    return Buffer$4.concat([
+      Buffer$4.from(`0${this.version}`, 'hex'),
+      src$3.getCodeVarint(this.codec),
+      src$2.prefix(this.multihash)
+    ])
+  }
+
+  /**
+   * Convert to a CID of version `0`.
+   *
+   * @returns {CID}
+   */
+  toV0 () {
+    if (this.codec !== 'dag-pb') {
+      throw new Error('Cannot convert a non dag-pb CID to CIDv0')
+    }
+
+    const { name, length } = src$2.decode(this.multihash);
+
+    if (name !== 'sha2-256') {
+      throw new Error('Cannot convert non sha2-256 multihash CID to CIDv0')
+    }
+
+    if (length !== 32) {
+      throw new Error('Cannot convert non 32 byte multihash CID to CIDv0')
+    }
+
+    return new _CID(0, this.codec, this.multihash)
+  }
+
+  /**
+   * Convert to a CID of version `1`.
+   *
+   * @returns {CID}
+   */
+  toV1 () {
+    return new _CID(1, this.codec, this.multihash)
+  }
+
+  /**
+   * Encode the CID into a string.
+   *
+   * @param {string} [base=this.multibaseName] - Base encoding to use.
+   * @returns {string}
+   */
+  toBaseEncodedString (base = this.multibaseName) {
+    if (this.string && base === this.multibaseName) {
+      return this.string
+    }
+    let str = null;
+    if (this.version === 0) {
+      if (base !== 'base58btc') {
+        throw new Error('not supported with CIDv0, to support different bases, please migrate the instance do CIDv1, you can do that through cid.toV1()')
+      }
+      str = src$2.toB58String(this.multihash);
+    } else if (this.version === 1) {
+      str = src$1.encode(base, this.buffer).toString();
+    } else {
+      throw new Error('unsupported version')
+    }
+    if (base === this.multibaseName) {
+      // cache the string value
+      Object.defineProperty(this, 'string', { value: str });
+    }
+    return str
+  }
+
+  /**
+   * CID(QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n)
+   *
+   * @returns {String}
+   */
+  [Symbol.for('nodejs.util.inspect.custom')] () {
+    return 'CID(' + this.toString() + ')'
+  }
+
+  toString (base) {
+    return this.toBaseEncodedString(base)
+  }
+
+  /**
+   * Serialize to a plain object.
+   *
+   * @returns {SerializedCID}
+   */
+  toJSON () {
+    return {
+      codec: this.codec,
+      version: this.version,
+      hash: this.multihash
+    }
+  }
+
+  /**
+   * Compare equality with another CID.
+   *
+   * @param {CID} other
+   * @returns {bool}
+   */
+  equals (other) {
+    return this.codec === other.codec &&
+      this.version === other.version &&
+      this.multihash.equals(other.multihash)
+  }
+
+  /**
+   * Test if the given input is a valid CID object.
+   * Throws if it is not.
+   *
+   * @param {any} other
+   * @returns {void}
+   */
+  static validateCID (other) {
+    const errorMsg = cidUtil.checkCIDComponents(other);
+    if (errorMsg) {
+      throw new Error(errorMsg)
+    }
+  }
+}
+
+const _CID = classIs(CID, {
+  className: 'CID',
+  symbolName: '@ipld/js-cid/CID'
+});
+
+_CID.codecs = codecs;
+
+var src$4 = _CID;
+
 var resolveIpfs = function resolveIpfs(ipfsURI) {
   if (ipfsURI.indexOf("ipfs://") >= 0) {
     var comps = ipfsURI.split("ipfs://");
@@ -1127,7 +3473,7 @@ var resolveIpfs = function resolveIpfs(ipfsURI) {
     if (uri.indexOf("ipfs/") >= 0) {
       return "https://cloudflare-ipfs.com/" + uri;
     } else {
-      return "https://cloudflare-ipfs.com/ipfs/" + uri;
+      return "https://" + new src$4(uri).toV1().toString() + ".ipfs.cf-ipfs.com";
     }
   } else {
     return ipfsURI;
