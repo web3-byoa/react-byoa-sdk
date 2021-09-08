@@ -206,7 +206,7 @@ export const ByoaSDK = (props: Props) => {
           continue;
         }
 
-        console.log("got tokenMeta", tokenMeta);
+        console.log("got tokenMeta", tokenMeta, "Tokenid", tid, "tokenUri", directTokenURI);
 
         if (appLUT[appIdForToken] !== null) {
           let appDetails = await contract.methods.getAppDetailsById(parseInt(appIdForToken)).call();
