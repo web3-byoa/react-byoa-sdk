@@ -205,7 +205,7 @@ export const ByoaSDK = (props: Props) => {
           console.warn("error fetching byoa app metadata, skipping this app. Tokenid", tid, "tokenUri", directTokenURI, "error", e);
         }
         if (tokenMeta === null) continue;
-        console.log("got tokenMeta", tokenMeta, "Tokenid", tid, "tokenUri", directTokenURI);
+        // console.log("got tokenMeta", tokenMeta, "Tokenid", tid, "tokenUri", directTokenURI);
 
         if (appLUT[appIdForToken] !== null) {
           let appDetails = await contract.methods.getAppDetailsById(parseInt(appIdForToken)).call();
