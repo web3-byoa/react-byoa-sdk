@@ -17,8 +17,8 @@ interface Props {
   }
 }
 
-const byoaContractAddress = `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512`;
-const providerNetwork = `http://localhost:8545`;
+const byoaContractAddress = `0xD3CFd6dDd98b8245C849D0f845ddC0b6Ce2E01e3`;
+const providerNetwork = `https://eth-ropsten.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5`;
 const jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
 
 let listeners: any = [];
