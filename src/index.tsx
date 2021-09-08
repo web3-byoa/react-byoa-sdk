@@ -198,7 +198,13 @@ export const ByoaSDK = (props: Props) => {
         let tid = parseInt(myTokenIds[i]);
         let appIdForToken = await contract.methods.getAppIdByTokenId(tid).call();
         let directTokenURI = await contract.methods.tokenURI(tid).call();
-        let tokenMeta = await getTokenMetadata(directTokenURI);
+        let tokenMeta: any = null;
+        try {
+          tokenMeta = await getTokenMetadata(directTokenURI);
+        } catch(e) {
+          console.warn("error fetching byoa app metadata, skipping this app. Tokenid", tid, "tokenUri", directTokenURI, "error", e);
+          continue;
+        }
 
         if (appLUT[appIdForToken] !== null) {
           let appDetails = await contract.methods.getAppDetailsById(parseInt(appIdForToken)).call();

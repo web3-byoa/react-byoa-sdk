@@ -3697,21 +3697,21 @@ var ByoaSDK = function ByoaSDK(props) {
     try {
       var w3 = new Web3(providerNetwork);
 
-      var _temp8 = _catch(function () {
+      var _temp10 = _catch(function () {
         var contract = new w3.eth.Contract(abi$1.abi, byoaContractAddress);
         return Promise.resolve(contract.methods.walletOfOwner(accountAddress ? accountAddress : addressHelper).call()).then(function (myTokenIds) {
-          function _temp6() {
+          function _temp8() {
             setInstalledApps(allInstalls);
           }
 
           var appLUT = {};
           var allInstalls = [];
 
-          var _temp5 = _forTo(myTokenIds, function (i) {
+          var _temp7 = _forTo(myTokenIds, function (i) {
             var tid = parseInt(myTokenIds[i]);
             return Promise.resolve(contract.methods.getAppIdByTokenId(tid).call()).then(function (appIdForToken) {
               return Promise.resolve(contract.methods.tokenURI(tid).call()).then(function (directTokenURI) {
-                return Promise.resolve(getTokenMetadata(directTokenURI)).then(function (tokenMeta) {
+                function _temp6() {
                   function _temp4() {
                     var ia = {
                       id: tid,
@@ -3744,18 +3744,30 @@ var ByoaSDK = function ByoaSDK(props) {
                   }();
 
                   return _temp3 && _temp3.then ? _temp3.then(_temp4) : _temp4(_temp3);
+                }
+
+                var tokenMeta = null;
+
+                var _temp5 = _catch(function () {
+                  return Promise.resolve(getTokenMetadata(directTokenURI)).then(function (_getTokenMetadata) {
+                    tokenMeta = _getTokenMetadata;
+                  });
+                }, function (e) {
+                  console.warn("error fetching byoa app metadata, skipping this app. Tokenid", tid, "tokenUri", directTokenURI, "error", e);
                 });
+
+                return _temp5 && _temp5.then ? _temp5.then(_temp6) : _temp6(_temp5);
               });
             });
           });
 
-          return _temp5 && _temp5.then ? _temp5.then(_temp6) : _temp6(_temp5);
+          return _temp7 && _temp7.then ? _temp7.then(_temp8) : _temp8(_temp7);
         });
       }, function (error) {
         console.log("Error fetching apps: " + error);
       });
 
-      return Promise.resolve(_temp8 && _temp8.then ? _temp8.then(function () {}) : void 0);
+      return Promise.resolve(_temp10 && _temp10.then ? _temp10.then(function () {}) : void 0);
     } catch (e) {
       return Promise.reject(e);
     }
