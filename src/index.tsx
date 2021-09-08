@@ -203,9 +203,8 @@ export const ByoaSDK = (props: Props) => {
           tokenMeta = await getTokenMetadata(directTokenURI);
         } catch(e) {
           console.warn("error fetching byoa app metadata, skipping this app. Tokenid", tid, "tokenUri", directTokenURI, "error", e);
-          continue;
         }
-
+        if (tokenMeta === null) continue;
         console.log("got tokenMeta", tokenMeta, "Tokenid", tid, "tokenUri", directTokenURI);
 
         if (appLUT[appIdForToken] !== null) {
