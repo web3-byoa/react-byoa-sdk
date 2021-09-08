@@ -2,13 +2,13 @@ import { ByoaApp } from "./byoaApp";
 
 export interface InstalledApp {
     id: Number;
-    tokenURI: String;
-    imageURI: String;
+    tokenURI: string;
+    imageURI: string;
     byoaDetails: ByoaDetails;
     app: ByoaApp;
 };
 
 export interface ByoaDetails {
-    uri: String;
+    uri: string;
     target : "host" | "iframe" | "mallows";
 }

@@ -1,19 +1,18 @@
 import { Box, Container, makeStyles, Typography } from '@material-ui/core';
-import { SpeedDial, SpeedDialAction } from '@material-ui/lab';
-import * as React from 'react';
-import DragMove from './components/DragMove';
 import AccountBalanceWalletIcon from '@material-ui/icons/AccountBalanceWallet';
+import { SpeedDial, SpeedDialAction } from '@material-ui/lab';
 import WalletConnectProvider from '@walletconnect/web3-provider';
-import PetsIcon from '@material-ui/icons/Pets';
-
+import { ethers } from 'ethers';
+import * as React from 'react';
 import Web3 from 'web3';
 import Web3Modal from "web3modal";
+import DragMove from './components/DragMove';
 import { InstalledApp } from './types/installedApp';
 import abi from './utils/abi/Byoa.json';
-import { ethers } from 'ethers';
+import { resolveIpfs } from './utils/ipfs_resolver';
 
 interface Props {
-  dataPipe? : {
+  dataPipe?: {
     data: any
   }
 }
@@ -22,7 +21,7 @@ const byoaContractAddress = `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512`;
 const providerNetwork = `http://localhost:8545`;
 const jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
 
-let listeners : any = [];
+let listeners: any = [];
 // @ts-expect-error
 window.byoa = {
   context: {
@@ -32,7 +31,7 @@ window.byoa = {
     ethers: ethers,
     provider: ethers.getDefaultProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5'),
     jrpcProvider: jrpcProvider,
-    addDataListener: (cb : any) => {
+    addDataListener: (cb: any) => {
       listeners.push(cb);
     },
     account: {
@@ -62,7 +61,7 @@ const useStyles = makeStyles({
   }
 });
 
-const providerOptions = {  
+const providerOptions = {
   walletconnect: {
     display: {
       name: "Mobile"
@@ -81,8 +80,40 @@ const web3Modal = new Web3Modal({
   providerOptions // required
 });
 
-// @ts-expect-error
-export const ByoaSDK = (props : Props) => {
+const singletonByoaAppContainerId = "byoa-singleton-container";
+// postcondition: byoa app singleton container has been created and is appended to document body
+function getSingletonByoaAppContainer(): HTMLElement {
+  const j = document.getElementById(singletonByoaAppContainerId);
+  if (j !== null) return j;
+  const e = document.createElement("div");
+  e.setAttribute("id", singletonByoaAppContainerId);
+  e.style.position = 'absolute';
+  e.style.right = '1vw';
+  e.style.bottom = '1vh';
+  e.style.width = '24.1vw';
+  e.style.height = '38.2vh';
+  document.body.appendChild(e);
+  return e;
+}
+
+const singletonByoaAppIframeId = "byoa-singleton-iframe";
+// postcondition: byoa app singleton iframe has been created, is a child of the passed container, and iframe src has been updated to passed src.
+function makeOrUpdateSingletonByoaAppIframe(container: HTMLElement, src: string): void {
+  const j = document.getElementById(singletonByoaAppIframeId);
+  if (j === null) {
+    const e = document.createElement("iframe");
+    e.setAttribute("id", singletonByoaAppIframeId);
+    e.setAttribute("src", src);
+    e.style.width = '100%';
+    e.style.height = '100%';
+    container.appendChild(e);
+  } else {
+    j.setAttribute("src", src);
+    container.appendChild(j);
+  }
+}
+
+export const ByoaSDK = (props: Props) => {
   const classes = useStyles();
   const [translateDial, setTranslateDial] = React.useState({
     x: 0,
@@ -96,22 +127,22 @@ export const ByoaSDK = (props : Props) => {
 
   const [installedApps, setInstalledApps] = React.useState<InstalledApp[]>([]);
 
-  
+
   const connectWallet = async () => {
     try {
       let p = provider;
       if (p === null) {
         p = await web3Modal.connect();
-        if(p === null) {
+        if (p === null) {
           throw new Error('Unable to connect provider to modal');
         }
-        p.on('accountsChanged', (e : any) => {
-            console.log(e);
+        p.on('accountsChanged', (e: any) => {
+          console.log(e);
           disconnectWallet();
         });
-            p.on("chainChanged", (chainId: number) => {
-                console.log("chain " + chainId);
-            });
+        p.on("chainChanged", (chainId: number) => {
+          console.log("chain " + chainId);
+        });
         setProvider(p);
       }
 
@@ -124,11 +155,11 @@ export const ByoaSDK = (props : Props) => {
         setWeb3(w3);
       }
 
-      const accounts = await p.request({method: 'eth_accounts'});
+      const accounts = await p.request({ method: 'eth_accounts' });
       if (accounts.length > 0) {
         setAccountAddress(accounts[0]);
-        setTimeout( async () => {
-            refreshMyApps(accounts[0]);
+        setTimeout(async () => {
+          refreshMyApps(accounts[0]);
         }, 2000);
       }
     } catch (error) {
@@ -143,84 +174,71 @@ export const ByoaSDK = (props : Props) => {
     setAccountAddress(null);
   };
 
-  const getTokenMetadata = async (uri : string) : Promise<any> =>  {
-    return new Promise<any>( (resolve) => {
-      resolve({
-        meta: uri,
-        image: "ipfs://QmYoSTehmdFUnSYCFrYdvSrEtNGy9U5gWEfroCTMGecHKw/0.png",
-        byoa: {
-          browser: {
-            uri: "http://localhost:3000/scripts/example1.js",
-            target: "host"
-          }
-        }
-      });
-    });
+  // TODO add ByoaAppMetadata type and parse this json into that type
+  const getTokenMetadata = async (uri: string): Promise<any> => {
+    const d = await fetch(resolveIpfs(uri));
+    const json = await d.json();
+    return json;
   };
 
-  const transformIPFSToPinned = (ipfsURI : String) : String => {
-    return `${ipfsURI}`;
-  }
-
-  const refreshMyApps = async (addressHelper : String | undefined | null) => {
+  const refreshMyApps = async (addressHelper: String | undefined | null) => {
     let w3 = new Web3(providerNetwork);
     try {
-        // @ts-expect-error
-        let contract = new w3.eth.Contract(abi.abi, byoaContractAddress);
-      
-        let myTokenIds = await contract.methods.walletOfOwner(accountAddress ? accountAddress : addressHelper).call();
-        console.log(myTokenIds);
+      // @ts-expect-error
+      let contract = new w3.eth.Contract(abi.abi, byoaContractAddress);
 
-        let appLUT : any = {};
-        
+      let myTokenIds = await contract.methods.walletOfOwner(accountAddress ? accountAddress : addressHelper).call();
+      // console.log(myTokenIds);
 
-        let allInstalls : InstalledApp[] = [];
-        for (var i = 0; i < myTokenIds.length; i ++) {
-            let tid = parseInt(myTokenIds[i]);
-            let appIdForToken = await contract.methods.getAppIdByTokenId(tid).call();
-            let directTokenURI = await contract.methods.tokenURI(tid).call();
-            let tokenMeta = await getTokenMetadata(directTokenURI);
-            
-            if(appLUT[appIdForToken] !== null) {
-              let appDetails = await contract.methods.getAppDetailsById(parseInt(appIdForToken)).call();
-              appLUT[appIdForToken] = 
-              {
-                id: appIdForToken,
-                name: appDetails[0],
-                description: appDetails[1],
-                tokenURI: appDetails[2],
-                owner: appDetails[3],
-                price: parseInt(appDetails[4]),
-                address: byoaContractAddress,
-                version: 'beta v0.1' 
-              }
-            }
+      let appLUT: any = {};
 
-            let ia : InstalledApp = {
-                id: tid,
-                tokenURI: directTokenURI,
-                app: appLUT[appIdForToken],
-                imageURI: tokenMeta.image,
-                byoaDetails: {
-                  uri: tokenMeta.byoa.browser.uri,
-                  target: tokenMeta.byoa.browser.target
-                }
-            }
 
-            allInstalls.push(ia);
+      let allInstalls: InstalledApp[] = [];
+      for (var i = 0; i < myTokenIds.length; i++) {
+        let tid = parseInt(myTokenIds[i]);
+        let appIdForToken = await contract.methods.getAppIdByTokenId(tid).call();
+        let directTokenURI = await contract.methods.tokenURI(tid).call();
+        let tokenMeta = await getTokenMetadata(directTokenURI);
+
+        if (appLUT[appIdForToken] !== null) {
+          let appDetails = await contract.methods.getAppDetailsById(parseInt(appIdForToken)).call();
+          appLUT[appIdForToken] =
+          {
+            id: appIdForToken,
+            name: appDetails[0],
+            description: appDetails[1],
+            tokenURI: appDetails[2],
+            owner: appDetails[3],
+            price: parseInt(appDetails[4]),
+            address: byoaContractAddress,
+            version: tokenMeta.version,
+          }
         }
-        console.log(allInstalls)
-        setInstalledApps(allInstalls);
-      
-    } catch( error ) {
-      console.log(`Error fetching apps: ${error}`) ;
+
+        let ia: InstalledApp = {
+          id: tid,
+          tokenURI: directTokenURI,
+          app: appLUT[appIdForToken],
+          imageURI: tokenMeta.image,
+          byoaDetails: {
+            uri: tokenMeta.implementationURIs.browser,
+            target: 'iframe', // currently, byoa SDK only supports iframe apps. We are designing our strategy for plugins in the host app main javascript thread
+          }
+        }
+        allInstalls.push(ia);
+      }
+      // console.log(allInstalls)
+      setInstalledApps(allInstalls);
+
+    } catch (error) {
+      console.log(`Error fetching apps: ${error}`);
     }
   };
-  
+
   return (
     <Box className={classes.root} id="byoa-hud">
       <Container className={classes.speedDial}>
-        <DragMove onDragMove={(e : any) => {
+        <DragMove onDragMove={(e: any) => {
           setTranslateDial({
             x: translateDial.x + e.movementX,
             y: translateDial.y + e.movementY
@@ -247,7 +265,7 @@ export const ByoaSDK = (props : Props) => {
               setOpenDial(false);
             }}
             onClick={() => {
-              
+
             }}
             direction={dialDirection}
           >
@@ -262,22 +280,12 @@ export const ByoaSDK = (props : Props) => {
             {installedApps.map((installedApp, i) => (
               <SpeedDialAction
                 key={`sd-action-${installedApp.id}-${i}`}
-                icon={<PetsIcon />}
-                tooltipTitle={`${installedApp.app.name} (#${installedApp.id})`}
+                icon={<img style={{ width: '40px', height: '40px' }} src={resolveIpfs(installedApp.imageURI)} />}
+                tooltipTitle={`${installedApp.app.name} ${installedApp.app.version}`}
                 onClick={() => {
-                  let scriptID = `byoa-${installedApp.id}-${installedApp.app.id}`;
-                  const existingApp = document.getElementById(scriptID);
-                  if (!existingApp) {
-                    const script = document.createElement('script');
-                    script.src = transformIPFSToPinned(installedApp.byoaDetails.uri) as string;
-                    script.id = scriptID;
-                    if(installedApp.byoaDetails.target == "host") {
-                      document.body.appendChild(script);
-                      script.onload = () => {
-                        // The script has loaded, possibly pass providers to it now
-                        console.log('loaded script');
-                      }
-                    }
+                  if (installedApp.byoaDetails.target === "iframe") { // TODO support javascript main thread plugins, right now it's just iframes as we focus on widgets and design our strategy for plugin security and communication with host apps
+                    const c = getSingletonByoaAppContainer();
+                    makeOrUpdateSingletonByoaAppIframe(c, resolveIpfs(installedApp.byoaDetails.uri));
                   }
                 }}
               />
@@ -285,7 +293,6 @@ export const ByoaSDK = (props : Props) => {
 
           </SpeedDial>
         </DragMove>
-          
       </Container>
     </Box>
   )
