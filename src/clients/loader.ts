@@ -3,16 +3,22 @@ import { ethers } from 'ethers';
 import { getSelectorFromName } from 'starknet/dist/utils/stark';
 import { felt_to_str } from '../utils/str_to_felt';
 import Web3 from 'web3';
-const byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
-const providerNetwork = `https://eth-mainnet.alchemyapi.io/v2/N9hhfuCL7V9y5dXCD5AOddGs-zVIyYc4`;
-
 import abi from '../utils/abi/Byoa.json';
-import { number } from 'starknet';
 
 
 interface LoadL2DataParams  {
     swo: StarknetWindowObject;
     address: string;
+    byoaContractDetails: {
+        address: string;
+    };
+    alchemyConfiguration: {
+        url: string;
+    };
+    starknetConfiguration: {
+        address: string;
+        network: 'goerli' | 'mainnet';
+    };
 };
 
 export interface L2AppData {
@@ -38,21 +44,13 @@ export interface ByoaApp {
     version: String;
 };
 
-const contractDetails = {
-    'goerli': {
-      address: '0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb'
-    }
-  };
-
-const chosenNetwork = 'goerli';
-
 const loadL2AppData =  (params : LoadL2DataParams) : Promise<L2AppData[]> => {
     return new Promise<L2AppData[]>(async (resolve, reject) => {
         if(params.swo) {
             let tAppData : L2AppData[] = [];
             try {
                 let getAppLenResult = await params.swo.provider?.callContract({
-                contract_address: contractDetails[chosenNetwork].address,
+                contract_address: params.starknetConfiguration.address,
                 entry_point_selector: getSelectorFromName("get_app_len"),
                 calldata: [ethers.BigNumber.from(params.address).toString()]
                 });
@@ -60,14 +58,14 @@ const loadL2AppData =  (params : LoadL2DataParams) : Promise<L2AppData[]> => {
                 
                 for(let i = 0; i < numberOfApps; i ++) {
                     let getAppArrayDataByIndexResult = await params.swo.provider?.callContract({
-                        contract_address: contractDetails[chosenNetwork].address,
+                        contract_address: params.starknetConfiguration.address,
                         entry_point_selector: getSelectorFromName("get_app_array"),
                         calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
                     });
                     let appIdAtIndex = ethers.BigNumber.from(getAppArrayDataByIndexResult.result[0]).toNumber();
 
                     let isInstalledResult = await params.swo.provider?.callContract({
-                        contract_address: contractDetails[chosenNetwork].address,
+                        contract_address: params.starknetConfiguration.address,
                         entry_point_selector: getSelectorFromName("get_app_installation"),
                         calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
                     });
@@ -78,7 +76,7 @@ const loadL2AppData =  (params : LoadL2DataParams) : Promise<L2AppData[]> => {
                     }
 
                     let appParamCountResult = await params.swo.provider?.callContract({
-                        contract_address: contractDetails[chosenNetwork].address,
+                        contract_address: params.starknetConfiguration.address,
                         entry_point_selector: getSelectorFromName("get_app_param_count"),
                         calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
                     });
@@ -86,7 +84,7 @@ const loadL2AppData =  (params : LoadL2DataParams) : Promise<L2AppData[]> => {
                     let configuredAppParams : any = [];
                     for(let j = 0; j < ethers.BigNumber.from(appParamCountResult.result[0]).toNumber(); j ++) {
                         let appParamValuesByIndexResult = await params.swo.provider?.callContract({
-                            contract_address: contractDetails[chosenNetwork].address,
+                            contract_address: params.starknetConfiguration.address,
                             entry_point_selector: getSelectorFromName("get_app_param_value_array"),
                             calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`, `${j}`]
                         });
@@ -98,7 +96,7 @@ const loadL2AppData =  (params : LoadL2DataParams) : Promise<L2AppData[]> => {
 
                     }
 
-                    let l1AppData = await fetchAppDetailById(appIdAtIndex);
+                    let l1AppData = await fetchAppDetailById(appIdAtIndex, params);
                     tAppData.push({
                         AppId: appIdAtIndex,
                         AppIndex: i,
@@ -113,7 +111,6 @@ const loadL2AppData =  (params : LoadL2DataParams) : Promise<L2AppData[]> => {
                 resolve(tAppData);
 
             } catch (error) {
-                console.log("Error with resz", error)
                 reject(error);
             } finally {
                 
@@ -124,12 +121,12 @@ const loadL2AppData =  (params : LoadL2DataParams) : Promise<L2AppData[]> => {
     })
 };
 
-const fetchAppDetailById = async (appId : number) : Promise<ByoaApp> => {
+const fetchAppDetailById = async (appId : number, params : LoadL2DataParams) : Promise<ByoaApp> => {
     return new Promise<ByoaApp>(async (resolve, reject) => {
-        let w3 = new Web3(providerNetwork);
+        let w3 = new Web3(params.alchemyConfiguration.url);
         try {
             // @ts-expect-error
-            let contract = new w3.eth.Contract(abi.abi, byoaContractAddress);
+            let contract = new w3.eth.Contract(abi.abi, params.byoaContractDetails.address);
         
             // Get the details
             let appDetails = await contract.methods.getAppDetailsById(appId).call();
@@ -141,7 +138,7 @@ const fetchAppDetailById = async (appId : number) : Promise<ByoaApp> => {
                 tokenURI: appDetails[2],
                 owner: appDetails[3],
                 price: parseInt(appDetails[4]),
-                address: byoaContractAddress,
+                address: params.byoaContractDetails.address,
                 version: 'beta v0.1'
             };
             

@@ -22,11 +22,24 @@ interface Props {
     data: any
   }
   mode?: "l1" | "l2";
+  byoaContractDetails?: {
+    address?: string;
+    network?: 'ropsten' | 'goerli' | 'rinkeby' | 'mainnet';
+  };
+  alchemyConfiguration?: {
+    network?: 'ropsten' | 'goerli' | 'rinkeby' | 'mainnet';
+    key?: string;
+    url?: string;
+  };
+  infuraConfiguration?: {
+    id?: string;
+  };
 }
 
-const byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
-const providerNetwork = `https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5`;
-const jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
+const default_byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
+const default_providerNetwork = `https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5`;
+const default_jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
+const default_infuraId = "6430aa46e9354b91bea44e464af71f7a";
 
 let listeners: any = [];
 // @ts-expect-error
@@ -36,8 +49,8 @@ window.byoa = {
       hud: "byoa-hud"
     },
     ethers: ethers,
-    provider: ethers.getDefaultProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5'),
-    jrpcProvider: jrpcProvider,
+    provider: ethers.getDefaultProvider(default_providerNetwork),
+    jrpcProvider: default_jrpcProvider,
     addDataListener: (cb: any) => {
       listeners.push(cb);
     },
@@ -68,24 +81,9 @@ const useStyles = makeStyles({
   }
 });
 
-const providerOptions = {
-  walletconnect: {
-    display: {
-      name: "Mobile"
-    },
-    package: WalletConnectProvider,
-    options: {
-      infuraId: "6430aa46e9354b91bea44e464af71f7a" // required
-    }
-  }
-};
 
-const web3Modal = new Web3Modal({
-  network: providerNetwork, // optional
-  cacheProvider: true, // optional
-  disableInjectedProvider: false,
-  providerOptions // required
-});
+
+
 
 const singletonByoaAppContainerId = "byoa-singleton-container";
 // postcondition: byoa app singleton container has been created and is appended to document body
@@ -129,6 +127,7 @@ export const ByoaSDK = (props: Props) => {
   const [dialDirection, setDialDirection] = React.useState<"left" | "right" | "up" | "down" | undefined>("up");
   const [openDial, setOpenDial] = React.useState(false);
   const [provider, setProvider] = React.useState<any>(null);
+  const [providerNetwork, setProviderNetwork] = React.useState<string|undefined>(props.alchemyConfiguration?.url);
   const [web3, setWeb3] = React.useState<any>(null);
   const [accountAddress, setAccountAddress] = React.useState<String | null>(null);
   const [argentAddress, setArgentAddress] = React.useState<String | undefined>(undefined);
@@ -136,16 +135,66 @@ export const ByoaSDK = (props: Props) => {
   const [isConnectingArgent, setIsConnectingArgent] = React.useState<boolean>(false);
   const [appIsRunning, setAppIsRunning] = React.useState<boolean>(false);
   const [runningAppId, setRunningAppId] = React.useState<string>("");
+  const [byoaContractAddress, setByoaContractAddress] = React.useState<string|undefined>(props.byoaContractDetails?.address);
 
   const [installedApps, setInstalledApps] = React.useState<InstalledApp[]>([]);
   const [swo, setSWO] = React.useState<StarknetWindowObject | undefined>(undefined);
+
+
+  const providerOptions = {
+    walletconnect: {
+      display: {
+        name: "Mobile"
+      },
+      package: WalletConnectProvider,
+      options: {
+        infuraId: props.infuraConfiguration?.id ? props.infuraConfiguration.id : default_infuraId // required
+      }
+    }
+  };
+
+  const web3Modal = new Web3Modal({
+    network: props.alchemyConfiguration?.url ? props.alchemyConfiguration.url : default_providerNetwork,
+    cacheProvider: true, // optional
+    disableInjectedProvider: false,
+    providerOptions // required
+  });
+
+  // Initialization Data
+  React.useEffect( () => {
+    if(props.alchemyConfiguration?.url) {
+      setProviderNetwork(props.alchemyConfiguration.url);
+    } else {
+      setProviderNetwork(default_providerNetwork);
+    }
+
+    if(props.byoaContractDetails) {
+      if(props.byoaContractDetails.address) {
+        setByoaContractAddress(props.byoaContractDetails.address);
+      } else {
+        setByoaContractAddress(default_byoaContractAddress);
+      }
+    } else {
+      setByoaContractAddress(default_byoaContractAddress);
+    }
+  }, []);
 
   React.useEffect( () => {
     if(swo === undefined) return;
     setIsConnectingArgent(true);
     loadL2AppData({
       swo: swo,
-      address: argentAddress as string
+      address: argentAddress as string,
+      byoaContractDetails: {
+        address: byoaContractAddress as string
+      },
+      alchemyConfiguration: {
+        url: providerNetwork as string
+      },
+      starknetConfiguration: {
+        address: "0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb",
+        network: 'goerli'
+      }
     }).then((data) => {
       installL2AppsForUse(data);
     }).catch( (error) => {
@@ -191,9 +240,6 @@ export const ByoaSDK = (props: Props) => {
         }
         p.on('accountsChanged', (e: any) => {
           disconnectWallet();
-        });
-        p.on("chainChanged", (chainId: number) => {
-          console.log("chain " + chainId);
         });
         setProvider(p);
       }
@@ -260,13 +306,12 @@ export const ByoaSDK = (props: Props) => {
   };
 
   const refreshMyApps = async (addressHelper: String | undefined | null) => {
-    let w3 = new Web3(providerNetwork);
+    let w3 = new Web3(providerNetwork as any);
     try {
       // @ts-expect-error
       let contract = new w3.eth.Contract(abi.abi, byoaContractAddress);
 
       let myTokenIds = await contract.methods.walletOfOwner(accountAddress ? accountAddress : addressHelper).call();
-      // console.log(myTokenIds);
 
       let appLUT: any = {};
 
@@ -283,7 +328,6 @@ export const ByoaSDK = (props: Props) => {
           console.warn("error fetching byoa app metadata, skipping this app. Tokenid", tid, "tokenUri", directTokenURI, "error", e);
         }
         if (tokenMeta === null) continue;
-        // console.log("got tokenMeta", tokenMeta, "Tokenid", tid, "tokenUri", directTokenURI);
 
         if (appLUT[appIdForToken] !== null) {
           let appDetails = await contract.methods.getAppDetailsById(parseInt(appIdForToken)).call();
@@ -312,7 +356,7 @@ export const ByoaSDK = (props: Props) => {
         }
         allInstalls.push(ia);
       }
-      // console.log(allInstalls)
+      
       setInstalledApps(allInstalls);
 
     } catch (error) {

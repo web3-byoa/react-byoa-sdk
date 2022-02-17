@@ -2,6 +2,16 @@ import { StarknetWindowObject } from '@argent/get-starknet/dist/extension.model'
 interface LoadL2DataParams {
     swo: StarknetWindowObject;
     address: string;
+    byoaContractDetails: {
+        address: string;
+    };
+    alchemyConfiguration: {
+        url: string;
+    };
+    starknetConfiguration: {
+        address: string;
+        network: 'goerli' | 'mainnet';
+    };
 }
 export interface L2AppData {
     AppId: number;

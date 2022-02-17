@@ -33440,15 +33440,6 @@ const felt_to_str = input => {
   return output;
 };
 
-const byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
-const providerNetwork = `https://eth-mainnet.alchemyapi.io/v2/N9hhfuCL7V9y5dXCD5AOddGs-zVIyYc4`;
-const contractDetails = {
-  'goerli': {
-    address: '0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb'
-  }
-};
-const chosenNetwork = 'goerli';
-
 const loadL2AppData = params => {
   return new Promise(async (resolve, reject) => {
     if (params.swo) {
@@ -33458,7 +33449,7 @@ const loadL2AppData = params => {
         var _params$swo$provider;
 
         let getAppLenResult = await ((_params$swo$provider = params.swo.provider) === null || _params$swo$provider === void 0 ? void 0 : _params$swo$provider.callContract({
-          contract_address: contractDetails[chosenNetwork].address,
+          contract_address: params.starknetConfiguration.address,
           entry_point_selector: stark_4("get_app_len"),
           calldata: [ethers.BigNumber.from(params.address).toString()]
         }));
@@ -33468,13 +33459,13 @@ const loadL2AppData = params => {
           var _params$swo$provider2, _params$swo$provider3, _params$swo$provider4;
 
           let getAppArrayDataByIndexResult = await ((_params$swo$provider2 = params.swo.provider) === null || _params$swo$provider2 === void 0 ? void 0 : _params$swo$provider2.callContract({
-            contract_address: contractDetails[chosenNetwork].address,
+            contract_address: params.starknetConfiguration.address,
             entry_point_selector: stark_4("get_app_array"),
             calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
           }));
           let appIdAtIndex = ethers.BigNumber.from(getAppArrayDataByIndexResult.result[0]).toNumber();
           let isInstalledResult = await ((_params$swo$provider3 = params.swo.provider) === null || _params$swo$provider3 === void 0 ? void 0 : _params$swo$provider3.callContract({
-            contract_address: contractDetails[chosenNetwork].address,
+            contract_address: params.starknetConfiguration.address,
             entry_point_selector: stark_4("get_app_installation"),
             calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
           }));
@@ -33485,7 +33476,7 @@ const loadL2AppData = params => {
           }
 
           let appParamCountResult = await ((_params$swo$provider4 = params.swo.provider) === null || _params$swo$provider4 === void 0 ? void 0 : _params$swo$provider4.callContract({
-            contract_address: contractDetails[chosenNetwork].address,
+            contract_address: params.starknetConfiguration.address,
             entry_point_selector: stark_4("get_app_param_count"),
             calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
           }));
@@ -33495,7 +33486,7 @@ const loadL2AppData = params => {
             var _params$swo$provider5;
 
             let appParamValuesByIndexResult = await ((_params$swo$provider5 = params.swo.provider) === null || _params$swo$provider5 === void 0 ? void 0 : _params$swo$provider5.callContract({
-              contract_address: contractDetails[chosenNetwork].address,
+              contract_address: params.starknetConfiguration.address,
               entry_point_selector: stark_4("get_app_param_value_array"),
               calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`, `${j}`]
             }));
@@ -33505,7 +33496,7 @@ const loadL2AppData = params => {
             });
           }
 
-          let l1AppData = await fetchAppDetailById(appIdAtIndex);
+          let l1AppData = await fetchAppDetailById(appIdAtIndex, params);
           tAppData.push({
             AppId: appIdAtIndex,
             AppIndex: i,
@@ -33518,7 +33509,6 @@ const loadL2AppData = params => {
 
         resolve(tAppData);
       } catch (error) {
-        console.log("Error with resz", error);
         reject(error);
       } finally {}
     } else {
@@ -33527,12 +33517,12 @@ const loadL2AppData = params => {
   });
 };
 
-const fetchAppDetailById = async appId => {
+const fetchAppDetailById = async (appId, params) => {
   return new Promise(async (resolve, reject) => {
-    let w3 = new Web3(providerNetwork);
+    let w3 = new Web3(params.alchemyConfiguration.url);
 
     try {
-      let contract = new w3.eth.Contract(abi$1.abi, byoaContractAddress);
+      let contract = new w3.eth.Contract(abi$1.abi, params.byoaContractDetails.address);
       let appDetails = await contract.methods.getAppDetailsById(appId).call();
       let app = {
         id: appId,
@@ -33541,7 +33531,7 @@ const fetchAppDetailById = async appId => {
         tokenURI: appDetails[2],
         owner: appDetails[3],
         price: parseInt(appDetails[4]),
-        address: byoaContractAddress,
+        address: params.byoaContractDetails.address,
         version: 'beta v0.1'
       };
       resolve(app);
@@ -33552,17 +33542,18 @@ const fetchAppDetailById = async appId => {
   });
 };
 
-const byoaContractAddress$1 = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
-const providerNetwork$1 = `https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5`;
-const jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
+const default_byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
+const default_providerNetwork = `https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5`;
+const default_jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
+const default_infuraId = "6430aa46e9354b91bea44e464af71f7a";
 window.byoa = {
   context: {
     target: {
       hud: "byoa-hud"
     },
     ethers: ethers,
-    provider: ethers.getDefaultProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5'),
-    jrpcProvider: jrpcProvider,
+    provider: ethers.getDefaultProvider(default_providerNetwork),
+    jrpcProvider: default_jrpcProvider,
     addDataListener: cb => {
     },
     account: {
@@ -33589,23 +33580,6 @@ const useStyles = makeStyles({
   byoaButton: {
     textTransform: 'none'
   }
-});
-const providerOptions = {
-  walletconnect: {
-    display: {
-      name: "Mobile"
-    },
-    package: WalletConnectProvider,
-    options: {
-      infuraId: "6430aa46e9354b91bea44e464af71f7a"
-    }
-  }
-};
-const web3Modal = new Web3Modal({
-  network: providerNetwork$1,
-  cacheProvider: true,
-  disableInjectedProvider: false,
-  providerOptions
 });
 const singletonByoaAppContainerId = "byoa-singleton-container";
 
@@ -33642,6 +33616,8 @@ function makeOrUpdateSingletonByoaAppIframe(container, src) {
 }
 
 const ByoaSDK = props => {
+  var _props$alchemyConfigu, _props$byoaContractDe, _props$infuraConfigur, _props$alchemyConfigu2;
+
   const classes = useStyles();
   const [translateDial, setTranslateDial] = useState({
     x: 0,
@@ -33650,6 +33626,7 @@ const ByoaSDK = props => {
   const [dialDirection, setDialDirection] = useState("up");
   const [openDial, setOpenDial] = useState(false);
   const [provider, setProvider] = useState(null);
+  const [providerNetwork, setProviderNetwork] = useState((_props$alchemyConfigu = props.alchemyConfiguration) === null || _props$alchemyConfigu === void 0 ? void 0 : _props$alchemyConfigu.url);
   const [web3, setWeb3] = useState(null);
   const [accountAddress, setAccountAddress] = useState(null);
   const [argentAddress, setArgentAddress] = useState(undefined);
@@ -33657,14 +33634,61 @@ const ByoaSDK = props => {
   const [isConnectingArgent, setIsConnectingArgent] = useState(false);
   const [appIsRunning, setAppIsRunning] = useState(false);
   const [runningAppId, setRunningAppId] = useState("");
+  const [byoaContractAddress, setByoaContractAddress] = useState((_props$byoaContractDe = props.byoaContractDetails) === null || _props$byoaContractDe === void 0 ? void 0 : _props$byoaContractDe.address);
   const [installedApps, setInstalledApps] = useState([]);
   const [swo, setSWO] = useState(undefined);
+  const providerOptions = {
+    walletconnect: {
+      display: {
+        name: "Mobile"
+      },
+      package: WalletConnectProvider,
+      options: {
+        infuraId: (_props$infuraConfigur = props.infuraConfiguration) !== null && _props$infuraConfigur !== void 0 && _props$infuraConfigur.id ? props.infuraConfiguration.id : default_infuraId
+      }
+    }
+  };
+  const web3Modal = new Web3Modal({
+    network: (_props$alchemyConfigu2 = props.alchemyConfiguration) !== null && _props$alchemyConfigu2 !== void 0 && _props$alchemyConfigu2.url ? props.alchemyConfiguration.url : default_providerNetwork,
+    cacheProvider: true,
+    disableInjectedProvider: false,
+    providerOptions
+  });
+  useEffect(() => {
+    var _props$alchemyConfigu3;
+
+    if ((_props$alchemyConfigu3 = props.alchemyConfiguration) !== null && _props$alchemyConfigu3 !== void 0 && _props$alchemyConfigu3.url) {
+      setProviderNetwork(props.alchemyConfiguration.url);
+    } else {
+      setProviderNetwork(default_providerNetwork);
+    }
+
+    if (props.byoaContractDetails) {
+      if (props.byoaContractDetails.address) {
+        setByoaContractAddress(props.byoaContractDetails.address);
+      } else {
+        setByoaContractAddress(default_byoaContractAddress);
+      }
+    } else {
+      setByoaContractAddress(default_byoaContractAddress);
+    }
+  }, []);
   useEffect(() => {
     if (swo === undefined) return;
     setIsConnectingArgent(true);
     loadL2AppData({
       swo: swo,
-      address: argentAddress
+      address: argentAddress,
+      byoaContractDetails: {
+        address: byoaContractAddress
+      },
+      alchemyConfiguration: {
+        url: providerNetwork
+      },
+      starknetConfiguration: {
+        address: "0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb",
+        network: 'goerli'
+      }
     }).then(data => {
       installL2AppsForUse(data);
     }).catch(error => {
@@ -33709,9 +33733,6 @@ const ByoaSDK = props => {
 
         p.on('accountsChanged', e => {
           disconnectWallet();
-        });
-        p.on("chainChanged", chainId => {
-          console.log("chain " + chainId);
         });
         setProvider(p);
       }
@@ -33784,10 +33805,10 @@ const ByoaSDK = props => {
   };
 
   const refreshMyApps = async addressHelper => {
-    let w3 = new Web3(providerNetwork$1);
+    let w3 = new Web3(providerNetwork);
 
     try {
-      let contract = new w3.eth.Contract(abi$1.abi, byoaContractAddress$1);
+      let contract = new w3.eth.Contract(abi$1.abi, byoaContractAddress);
       let myTokenIds = await contract.methods.walletOfOwner(accountAddress ? accountAddress : addressHelper).call();
       let appLUT = {};
       let allInstalls = [];
@@ -33815,7 +33836,7 @@ const ByoaSDK = props => {
             tokenURI: appDetails[2],
             owner: appDetails[3],
             price: parseInt(appDetails[4]),
-            address: byoaContractAddress$1,
+            address: byoaContractAddress,
             version: tokenMeta.version
           };
         }
