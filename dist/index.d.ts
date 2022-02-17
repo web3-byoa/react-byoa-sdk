@@ -15,6 +15,10 @@ interface Props {
     infuraConfiguration?: {
         id?: string;
     };
+    starknetConfiguration?: {
+        address?: string;
+        network?: 'goerli' | 'mainnet';
+    };
 }
 export declare const ByoaSDK: (props: Props) => JSX.Element;
 export {};

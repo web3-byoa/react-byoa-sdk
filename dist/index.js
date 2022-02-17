@@ -33894,7 +33894,7 @@ function makeOrUpdateSingletonByoaAppIframe(container, src) {
 }
 
 var ByoaSDK = function ByoaSDK(props) {
-  var _props$alchemyConfigu, _props$byoaContractDe, _props$infuraConfigur, _props$alchemyConfigu2;
+  var _props$alchemyConfigu, _props$byoaContractDe, _props$starknetConfig, _props$starknetConfig2, _props$infuraConfigur, _props$alchemyConfigu2;
 
   var classes = useStyles();
 
@@ -33953,13 +33953,21 @@ var ByoaSDK = function ByoaSDK(props) {
       byoaContractAddress = _React$useState13[0],
       setByoaContractAddress = _React$useState13[1];
 
-  var _React$useState14 = React.useState([]),
-      installedApps = _React$useState14[0],
-      setInstalledApps = _React$useState14[1];
+  var _React$useState14 = React.useState((_props$starknetConfig = props.starknetConfiguration) === null || _props$starknetConfig === void 0 ? void 0 : _props$starknetConfig.address),
+      starknetAddress = _React$useState14[0],
+      setStarknetAddress = _React$useState14[1];
 
-  var _React$useState15 = React.useState(undefined),
-      swo = _React$useState15[0],
-      setSWO = _React$useState15[1];
+  var _React$useState15 = React.useState((_props$starknetConfig2 = props.starknetConfiguration) === null || _props$starknetConfig2 === void 0 ? void 0 : _props$starknetConfig2.network),
+      starknetNetwork = _React$useState15[0],
+      setStarknetNetwork = _React$useState15[1];
+
+  var _React$useState16 = React.useState([]),
+      installedApps = _React$useState16[0],
+      setInstalledApps = _React$useState16[1];
+
+  var _React$useState17 = React.useState(undefined),
+      swo = _React$useState17[0],
+      setSWO = _React$useState17[1];
 
   var providerOptions = {
     walletconnect: {
@@ -33996,6 +34004,23 @@ var ByoaSDK = function ByoaSDK(props) {
     } else {
       setByoaContractAddress(default_byoaContractAddress);
     }
+
+    if (props.starknetConfiguration) {
+      if (props.starknetConfiguration.address) {
+        setStarknetAddress(props.starknetConfiguration.address);
+      } else {
+        setStarknetAddress("0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb");
+      }
+
+      if (props.starknetConfiguration.network) {
+        setStarknetNetwork(props.starknetConfiguration.network);
+      } else {
+        setStarknetNetwork('goerli');
+      }
+    } else {
+      setStarknetAddress("0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb");
+      setStarknetNetwork('goerli');
+    }
   }, []);
   React.useEffect(function () {
     if (swo === undefined) return;
@@ -34010,8 +34035,8 @@ var ByoaSDK = function ByoaSDK(props) {
         url: providerNetwork
       },
       starknetConfiguration: {
-        address: "0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb",
-        network: 'goerli'
+        address: starknetAddress,
+        network: starknetNetwork
       }
     }).then(function (data) {
       installL2AppsForUse(data);

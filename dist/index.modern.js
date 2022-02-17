@@ -33616,7 +33616,7 @@ function makeOrUpdateSingletonByoaAppIframe(container, src) {
 }
 
 const ByoaSDK = props => {
-  var _props$alchemyConfigu, _props$byoaContractDe, _props$infuraConfigur, _props$alchemyConfigu2;
+  var _props$alchemyConfigu, _props$byoaContractDe, _props$starknetConfig, _props$starknetConfig2, _props$infuraConfigur, _props$alchemyConfigu2;
 
   const classes = useStyles();
   const [translateDial, setTranslateDial] = useState({
@@ -33635,6 +33635,8 @@ const ByoaSDK = props => {
   const [appIsRunning, setAppIsRunning] = useState(false);
   const [runningAppId, setRunningAppId] = useState("");
   const [byoaContractAddress, setByoaContractAddress] = useState((_props$byoaContractDe = props.byoaContractDetails) === null || _props$byoaContractDe === void 0 ? void 0 : _props$byoaContractDe.address);
+  const [starknetAddress, setStarknetAddress] = useState((_props$starknetConfig = props.starknetConfiguration) === null || _props$starknetConfig === void 0 ? void 0 : _props$starknetConfig.address);
+  const [starknetNetwork, setStarknetNetwork] = useState((_props$starknetConfig2 = props.starknetConfiguration) === null || _props$starknetConfig2 === void 0 ? void 0 : _props$starknetConfig2.network);
   const [installedApps, setInstalledApps] = useState([]);
   const [swo, setSWO] = useState(undefined);
   const providerOptions = {
@@ -33672,6 +33674,23 @@ const ByoaSDK = props => {
     } else {
       setByoaContractAddress(default_byoaContractAddress);
     }
+
+    if (props.starknetConfiguration) {
+      if (props.starknetConfiguration.address) {
+        setStarknetAddress(props.starknetConfiguration.address);
+      } else {
+        setStarknetAddress("0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb");
+      }
+
+      if (props.starknetConfiguration.network) {
+        setStarknetNetwork(props.starknetConfiguration.network);
+      } else {
+        setStarknetNetwork('goerli');
+      }
+    } else {
+      setStarknetAddress("0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb");
+      setStarknetNetwork('goerli');
+    }
   }, []);
   useEffect(() => {
     if (swo === undefined) return;
@@ -33686,8 +33705,8 @@ const ByoaSDK = props => {
         url: providerNetwork
       },
       starknetConfiguration: {
-        address: "0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb",
-        network: 'goerli'
+        address: starknetAddress,
+        network: starknetNetwork
       }
     }).then(data => {
       installL2AppsForUse(data);

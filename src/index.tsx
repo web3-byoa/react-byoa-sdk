@@ -34,6 +34,10 @@ interface Props {
   infuraConfiguration?: {
     id?: string;
   };
+  starknetConfiguration?: {
+    address?: string;
+    network?: 'goerli' | 'mainnet';
+  };
 }
 
 const default_byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
@@ -136,6 +140,8 @@ export const ByoaSDK = (props: Props) => {
   const [appIsRunning, setAppIsRunning] = React.useState<boolean>(false);
   const [runningAppId, setRunningAppId] = React.useState<string>("");
   const [byoaContractAddress, setByoaContractAddress] = React.useState<string|undefined>(props.byoaContractDetails?.address);
+  const [starknetAddress, setStarknetAddress] = React.useState<string|undefined>(props.starknetConfiguration?.address);
+  const [starknetNetwork, setStarknetNetwork] = React.useState<'goerli'|'mainnet'|undefined>(props.starknetConfiguration?.network);
 
   const [installedApps, setInstalledApps] = React.useState<InstalledApp[]>([]);
   const [swo, setSWO] = React.useState<StarknetWindowObject | undefined>(undefined);
@@ -177,6 +183,22 @@ export const ByoaSDK = (props: Props) => {
     } else {
       setByoaContractAddress(default_byoaContractAddress);
     }
+
+    if(props.starknetConfiguration) {
+      if(props.starknetConfiguration.address) {
+        setStarknetAddress(props.starknetConfiguration.address);
+      } else {
+        setStarknetAddress("0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb");
+      }
+      if(props.starknetConfiguration.network) {
+        setStarknetNetwork(props.starknetConfiguration.network)
+      } else {
+        setStarknetNetwork('goerli')
+      }
+    } else {
+      setStarknetAddress("0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb");
+      setStarknetNetwork('goerli')
+    }
   }, []);
 
   React.useEffect( () => {
@@ -192,8 +214,8 @@ export const ByoaSDK = (props: Props) => {
         url: providerNetwork as string
       },
       starknetConfiguration: {
-        address: "0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb",
-        network: 'goerli'
+        address: starknetAddress as string,
+        network: starknetNetwork as 'goerli' | 'mainnet'
       }
     }).then((data) => {
       installL2AppsForUse(data);
