@@ -1,5 +1,6 @@
-import { Box, Container, makeStyles, Typography } from '@material-ui/core';
+import { Box, CircularProgress, Container, makeStyles, Menu, Typography } from '@material-ui/core';
 import AccountBalanceWalletIcon from '@material-ui/icons/AccountBalanceWallet';
+import MenuIcon from '@material-ui/icons/Menu';
 import { SpeedDial, SpeedDialAction } from '@material-ui/lab';
 import WalletConnectProvider from '@walletconnect/web3-provider';
 import { ethers } from 'ethers';
@@ -10,6 +11,11 @@ import DragMove from './components/DragMove';
 import { InstalledApp } from './types/installedApp';
 import abi from './utils/abi/Byoa.json';
 import { resolveIpfs } from './utils/ipfs_resolver';
+import { getStarknet } from '@argent/get-starknet';
+import { StarknetWindowObject } from '@argent/get-starknet/dist/extension.model';
+import { L2AppData, loadL2AppData } from './clients/loader';
+
+
 
 interface Props {
   dataPipe?: {
@@ -57,7 +63,7 @@ const useStyles = makeStyles({
     zIndex: 1000000000
   },
   byoaButton: {
-
+    textTransform: 'none'
   }
 });
 
@@ -124,8 +130,54 @@ export const ByoaSDK = (props: Props) => {
   const [provider, setProvider] = React.useState<any>(null);
   const [web3, setWeb3] = React.useState<any>(null);
   const [accountAddress, setAccountAddress] = React.useState<String | null>(null);
+  const [argentAddress, setArgentAddress] = React.useState<String | undefined>(undefined);
+  const [isArgentConnected, setIsArgentConnected] = React.useState<boolean>(false);
+  const [isConnectingArgent, setIsConnectingArgent] = React.useState<boolean>(false);
 
   const [installedApps, setInstalledApps] = React.useState<InstalledApp[]>([]);
+  const [swo, setSWO] = React.useState<StarknetWindowObject | undefined>(undefined);
+
+  React.useEffect( () => {
+    console.log(`SWO: `, swo)
+    if(swo === undefined) return;
+    setIsConnectingArgent(true);
+    loadL2AppData({
+      swo: swo,
+      address: argentAddress as string
+    }).then((data) => {
+      alert('DOne loading l2 data');
+      installL2AppsForUse(data);
+    }).catch( (error) => {
+      alert(`Error loading l2 ${error}`)
+    }).finally(() => {
+      setIsConnectingArgent(false);
+    })
+  }, [isArgentConnected]);
+
+  React.useState( () => {
+    if(swo === undefined) return;
+    if(swo.isConnected != isArgentConnected) {
+      setIsArgentConnected(swo?.isConnected)
+    }
+    // @ts-expect-error
+  }, [swo?.isConnected]);
+
+
+  const connectArgentWallet = async () => {
+    try{
+      const starknet = getStarknet();
+      setSWO(starknet);
+      
+      const [userWalletContractAddress] = await starknet.enable() // may throws when no extension is detected
+      if(userWalletContractAddress.length > 0) {
+        setArgentAddress(userWalletContractAddress);
+        setIsArgentConnected(starknet.isConnected);
+      }
+
+    } catch (error) {
+      console.log(`Got Starknet Error: `, error);
+    }
+  };
 
 
   const connectWallet = async () => {
@@ -179,6 +231,32 @@ export const ByoaSDK = (props: Props) => {
     const d = await fetch(resolveIpfs(uri));
     const json = await d.json();
     return json;
+  };
+
+  const installL2AppsForUse = async (l2Apps : L2AppData[]) => {
+    let allInstalls : InstalledApp[] = [];
+    for(let i = 0; i < l2Apps.length; i ++) {
+      let l2App : L2AppData = l2Apps[i];
+      let tokenMeta : any = {};
+      try {
+        tokenMeta = await getTokenMetadata(l2App.ByoaApp.tokenURI as string);
+      } catch (error) {
+
+      }
+
+      let ia: InstalledApp = {
+        id: l2App.AppId,
+        tokenURI: l2App.ByoaApp.tokenURI as string,
+        app: l2App.ByoaApp,
+        imageURI: tokenMeta.image,
+        byoaDetails: {
+          uri: tokenMeta.implementationURIs.browser,
+          target: 'iframe', // currently, byoa SDK only supports iframe apps. We are designing our strategy for plugins in the host app main javascript thread
+        }
+      }
+      allInstalls.push(ia);
+    }
+    setInstalledApps(allInstalls);
   };
 
   const refreshMyApps = async (addressHelper: String | undefined | null) => {
@@ -263,7 +341,15 @@ export const ByoaSDK = (props: Props) => {
             }}
             ariaLabel="BYOA Speed Dial"
             hidden={false}
-            icon={<Typography className={classes.byoaButton}>RUN</Typography>}
+            icon={<Box>
+              {isConnectingArgent && (
+                <CircularProgress color="secondary" />
+              )}
+              {!isConnectingArgent && (
+                <MenuIcon />
+              )}
+            
+            </Box>}
             open={openDial}
             onOpen={() => {
               setOpenDial(true);
@@ -282,6 +368,14 @@ export const ByoaSDK = (props: Props) => {
               tooltipTitle={'Connect Wallet'}
               onClick={() => {
                 connectWallet();
+              }}
+            />
+            <SpeedDialAction
+              key={'sda-connect-wallet-argent'}
+              icon={<AccountBalanceWalletIcon />}
+              tooltipTitle={'Connect Argent'}
+              onClick={() => {
+                connectArgentWallet();
               }}
             />
             {installedApps.map((installedApp, i) => (
