@@ -1,5 +1,6 @@
-import { Box, Container, makeStyles, Typography } from '@material-ui/core';
+import { Box, CircularProgress, Container, makeStyles, Menu, Typography } from '@material-ui/core';
 import AccountBalanceWalletIcon from '@material-ui/icons/AccountBalanceWallet';
+import MenuIcon from '@material-ui/icons/Menu';
 import { SpeedDial, SpeedDialAction } from '@material-ui/lab';
 import WalletConnectProvider from '@walletconnect/web3-provider';
 import { ethers } from 'ethers';
@@ -10,16 +11,41 @@ import DragMove from './components/DragMove';
 import { InstalledApp } from './types/installedApp';
 import abi from './utils/abi/Byoa.json';
 import { resolveIpfs } from './utils/ipfs_resolver';
+import { getStarknet } from '@argent/get-starknet';
+import { StarknetWindowObject } from '@argent/get-starknet/dist/extension.model';
+import { L2AppData, loadL2AppData } from './clients/loader';
+
+
 
 interface Props {
   dataPipe?: {
     data: any
   }
+  mode?: "l1" | "l2";
+  byoaContractDetails?: {
+    address?: string;
+    network?: 'ropsten' | 'goerli' | 'rinkeby' | 'mainnet';
+  };
+  alchemyConfiguration?: {
+    network?: 'ropsten' | 'goerli' | 'rinkeby' | 'mainnet';
+    key?: string;
+    url?: string;
+  };
+  infuraConfiguration?: {
+    id?: string;
+  };
+  starknetConfiguration?: {
+    address?: string;
+    network?: 'goerli' | 'mainnet';
+  };
 }
 
-const byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
-const providerNetwork = `https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5`;
-const jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
+const default_byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
+const default_providerNetwork = `https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5`;
+const default_jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
+const default_infuraId = "6430aa46e9354b91bea44e464af71f7a";
+const default_starknetAddress = "0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb";
+const default_starknetNetwork : 'goerli' | 'mainnet' = 'goerli';
 
 let listeners: any = [];
 // @ts-expect-error
@@ -29,8 +55,8 @@ window.byoa = {
       hud: "byoa-hud"
     },
     ethers: ethers,
-    provider: ethers.getDefaultProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5'),
-    jrpcProvider: jrpcProvider,
+    provider: ethers.getDefaultProvider(default_providerNetwork),
+    jrpcProvider: default_jrpcProvider,
     addDataListener: (cb: any) => {
       listeners.push(cb);
     },
@@ -57,28 +83,13 @@ const useStyles = makeStyles({
     zIndex: 1000000000
   },
   byoaButton: {
-
+    textTransform: 'none'
   }
 });
 
-const providerOptions = {
-  walletconnect: {
-    display: {
-      name: "Mobile"
-    },
-    package: WalletConnectProvider,
-    options: {
-      infuraId: "6430aa46e9354b91bea44e464af71f7a" // required
-    }
-  }
-};
 
-const web3Modal = new Web3Modal({
-  network: providerNetwork, // optional
-  cacheProvider: true, // optional
-  disableInjectedProvider: false,
-  providerOptions // required
-});
+
+
 
 const singletonByoaAppContainerId = "byoa-singleton-container";
 // postcondition: byoa app singleton container has been created and is appended to document body
@@ -122,10 +133,125 @@ export const ByoaSDK = (props: Props) => {
   const [dialDirection, setDialDirection] = React.useState<"left" | "right" | "up" | "down" | undefined>("up");
   const [openDial, setOpenDial] = React.useState(false);
   const [provider, setProvider] = React.useState<any>(null);
+  const [providerNetwork, setProviderNetwork] = React.useState<string|undefined>(props.alchemyConfiguration?.url);
   const [web3, setWeb3] = React.useState<any>(null);
   const [accountAddress, setAccountAddress] = React.useState<String | null>(null);
+  const [argentAddress, setArgentAddress] = React.useState<String | undefined>(undefined);
+  const [isArgentConnected, setIsArgentConnected] = React.useState<boolean>(false);
+  const [isConnectingArgent, setIsConnectingArgent] = React.useState<boolean>(false);
+  const [appIsRunning, setAppIsRunning] = React.useState<boolean>(false);
+  const [runningAppId, setRunningAppId] = React.useState<string>("");
+  const [byoaContractAddress, setByoaContractAddress] = React.useState<string|undefined>(props.byoaContractDetails?.address);
+  const [starknetAddress, setStarknetAddress] = React.useState<string|undefined>(props.starknetConfiguration?.address);
+  const [starknetNetwork, setStarknetNetwork] = React.useState<'goerli'|'mainnet'|undefined>(props.starknetConfiguration?.network);
 
   const [installedApps, setInstalledApps] = React.useState<InstalledApp[]>([]);
+  const [swo, setSWO] = React.useState<StarknetWindowObject | undefined>(undefined);
+
+
+  const providerOptions = {
+    walletconnect: {
+      display: {
+        name: "Mobile"
+      },
+      package: WalletConnectProvider,
+      options: {
+        infuraId: props.infuraConfiguration?.id ? props.infuraConfiguration.id : default_infuraId // required
+      }
+    }
+  };
+
+  const web3Modal = new Web3Modal({
+    network: props.alchemyConfiguration?.url ? props.alchemyConfiguration.url : default_providerNetwork,
+    cacheProvider: true, // optional
+    disableInjectedProvider: false,
+    providerOptions // required
+  });
+
+  // Initialization Data
+  React.useEffect( () => {
+    if(props.alchemyConfiguration?.url) {
+      setProviderNetwork(props.alchemyConfiguration.url);
+    } else {
+      setProviderNetwork(default_providerNetwork);
+    }
+
+    if(props.byoaContractDetails) {
+      if(props.byoaContractDetails.address) {
+        setByoaContractAddress(props.byoaContractDetails.address);
+      } else {
+        setByoaContractAddress(default_byoaContractAddress);
+      }
+    } else {
+      setByoaContractAddress(default_byoaContractAddress);
+    }
+
+    if(props.starknetConfiguration) {
+      if(props.starknetConfiguration.address) {
+        setStarknetAddress(props.starknetConfiguration.address);
+      } else {
+        setStarknetAddress(default_starknetAddress);
+      }
+      if(props.starknetConfiguration.network) {
+        setStarknetNetwork(props.starknetConfiguration.network)
+      } else {
+        setStarknetNetwork(default_starknetNetwork)
+      }
+    } else {
+      setStarknetAddress(default_starknetAddress);
+      setStarknetNetwork(default_starknetNetwork)
+    }
+  }, []);
+
+  React.useEffect( () => {
+    if(swo === undefined) return;
+    setIsConnectingArgent(true);
+    loadL2AppData({
+      swo: swo,
+      address: argentAddress as string,
+      byoaContractDetails: {
+        address: byoaContractAddress as string
+      },
+      alchemyConfiguration: {
+        url: providerNetwork as string
+      },
+      starknetConfiguration: {
+        address: starknetAddress as string,
+        network: starknetNetwork as 'goerli' | 'mainnet'
+      }
+    }).then((data) => {
+      installL2AppsForUse(data);
+    }).catch( (error) => {
+      alert(`Error loading l2 ${error}`)
+    }).finally(() => {
+      setIsConnectingArgent(false);
+    })
+  }, [isArgentConnected]);
+
+  React.useState( () => {
+    if(swo === undefined) return;
+    if(swo.isConnected != isArgentConnected) {
+      setIsArgentConnected(swo?.isConnected)
+    }
+    // @ts-expect-error
+  }, [swo?.isConnected]);
+
+
+  const connectArgentWallet = async () => {
+    try{
+      const starknet = getStarknet();
+      setSWO(starknet);
+      
+      const [userWalletContractAddress] = await starknet.enable() // may throws when no extension is detected
+      if(userWalletContractAddress.length > 0) {
+        setArgentAddress(userWalletContractAddress);
+        setIsArgentConnected(starknet.isConnected);
+      }
+
+    } catch (error) {
+      console.log(`Got Starknet Error: `, error);
+    }
+  };
 
 
   const connectWallet = async () => {
@@ -137,11 +263,7 @@ export const ByoaSDK = (props: Props) => {
           throw new Error('Unable to connect provider to modal');
         }
         p.on('accountsChanged', (e: any) => {
-          console.log(e);
           disconnectWallet();
-        });
-        p.on("chainChanged", (chainId: number) => {
-          console.log("chain " + chainId);
         });
         setProvider(p);
       }
@@ -181,14 +303,39 @@ export const ByoaSDK = (props: Props) => {
     return json;
   };
 
+  const installL2AppsForUse = async (l2Apps : L2AppData[]) => {
+    let allInstalls : InstalledApp[] = [];
+    for(let i = 0; i < l2Apps.length; i ++) {
+      let l2App : L2AppData = l2Apps[i];
+      let tokenMeta : any = {};
+      try {
+        tokenMeta = await getTokenMetadata(l2App.ByoaApp.tokenURI as string);
+      } catch (error) {
+
+      }
+
+      let ia: InstalledApp = {
+        id: l2App.AppId,
+        tokenURI: l2App.ByoaApp.tokenURI as string,
+        app: l2App.ByoaApp,
+        imageURI: tokenMeta.image,
+        byoaDetails: {
+          uri: tokenMeta.implementationURIs.browser,
+          target: 'iframe', // currently, byoa SDK only supports iframe apps. We are designing our strategy for plugins in the host app main javascript thread
+        }
+      }
+      allInstalls.push(ia);
+    }
+    setInstalledApps(allInstalls);
+  };
+
   const refreshMyApps = async (addressHelper: String | undefined | null) => {
-    let w3 = new Web3(providerNetwork);
+    let w3 = new Web3(providerNetwork as any);
     try {
       // @ts-expect-error
       let contract = new w3.eth.Contract(abi.abi, byoaContractAddress);
 
       let myTokenIds = await contract.methods.walletOfOwner(accountAddress ? accountAddress : addressHelper).call();
-      // console.log(myTokenIds);
 
       let appLUT: any = {};
 
@@ -205,7 +352,6 @@ export const ByoaSDK = (props: Props) => {
           console.warn("error fetching byoa app metadata, skipping this app. Tokenid", tid, "tokenUri", directTokenURI, "error", e);
         }
         if (tokenMeta === null) continue;
-        // console.log("got tokenMeta", tokenMeta, "Tokenid", tid, "tokenUri", directTokenURI);
 
         if (appLUT[appIdForToken] !== null) {
           let appDetails = await contract.methods.getAppDetailsById(parseInt(appIdForToken)).call();
@@ -234,7 +380,7 @@ export const ByoaSDK = (props: Props) => {
         }
         allInstalls.push(ia);
       }
-      // console.log(allInstalls)
+      
       setInstalledApps(allInstalls);
 
     } catch (error) {
@@ -263,7 +409,15 @@ export const ByoaSDK = (props: Props) => {
             }}
             ariaLabel="BYOA Speed Dial"
             hidden={false}
-            icon={<Typography className={classes.byoaButton}>RUN</Typography>}
+            icon={<Box>
+              {isConnectingArgent && (
+                <CircularProgress color="secondary" />
+              )}
+              {!isConnectingArgent && (
+                <MenuIcon />
+              )}
+            
+            </Box>}
             open={openDial}
             onOpen={() => {
               setOpenDial(true);
@@ -276,6 +430,7 @@ export const ByoaSDK = (props: Props) => {
             }}
             direction={dialDirection}
           >
+            {props.mode === "l1" && (
             <SpeedDialAction
               key={'sda-connect-wallet'}
               icon={<AccountBalanceWalletIcon />}
@@ -284,15 +439,38 @@ export const ByoaSDK = (props: Props) => {
                 connectWallet();
               }}
             />
+            )}
+            {(props.mode === "l2" || props.mode === undefined) && (
+            <SpeedDialAction
+              key={'sda-connect-wallet-argent'}
+              icon={<AccountBalanceWalletIcon />}
+              tooltipTitle={isConnectingArgent ? 'Connecting...' : isArgentConnected ? 'Connected' : 'Connect Argent'}
+              onClick={() => {
+                if(isConnectingArgent) return;
+                if(isArgentConnected === false || swo === undefined) {
+                  connectArgentWallet();
+                } else {
+                  alert("Argent Wallet is already connected");
+                }
+                
+              }}
+            />
+            )}
             {installedApps.map((installedApp, i) => (
               <SpeedDialAction
                 key={`sd-action-${installedApp.id}-${i}`}
                 icon={<img style={{ width: '40px', height: '40px' }} src={resolveIpfs(installedApp.imageURI)} />}
-                tooltipTitle={`${installedApp.app.name} ${installedApp.app.version}`}
+                tooltipTitle={`${installedApp.app.name} ${installedApp.app.version}${runningAppId === `${installedApp.app.id}` ? '(running)' : ''}`}
                 onClick={() => {
+                  if(appIsRunning) {
+                    alert("Only one app may be run at a time currently.");
+                    return;
+                  }
                   if (installedApp.byoaDetails.target === "iframe") { // TODO support javascript main thread plugins, right now it's just iframes as we focus on widgets and design our strategy for plugin security and communication with host apps
                     const c = getSingletonByoaAppContainer();
                     makeOrUpdateSingletonByoaAppIframe(c, resolveIpfs(installedApp.byoaDetails.uri));
+                    setAppIsRunning(true);
+                    setRunningAppId(`${installedApp.app.id}`);
                   }
                 }}
               />
