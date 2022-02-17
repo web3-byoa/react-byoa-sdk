@@ -21,6 +21,7 @@ interface Props {
   dataPipe?: {
     data: any
   }
+  mode?: "l1" | "l2";
 }
 
 const byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
@@ -133,19 +134,19 @@ export const ByoaSDK = (props: Props) => {
   const [argentAddress, setArgentAddress] = React.useState<String | undefined>(undefined);
   const [isArgentConnected, setIsArgentConnected] = React.useState<boolean>(false);
   const [isConnectingArgent, setIsConnectingArgent] = React.useState<boolean>(false);
+  const [appIsRunning, setAppIsRunning] = React.useState<boolean>(false);
+  const [runningAppId, setRunningAppId] = React.useState<string>("");
 
   const [installedApps, setInstalledApps] = React.useState<InstalledApp[]>([]);
   const [swo, setSWO] = React.useState<StarknetWindowObject | undefined>(undefined);
 
   React.useEffect( () => {
-    console.log(`SWO: `, swo)
     if(swo === undefined) return;
     setIsConnectingArgent(true);
     loadL2AppData({
       swo: swo,
       address: argentAddress as string
     }).then((data) => {
-      alert('DOne loading l2 data');
       installL2AppsForUse(data);
     }).catch( (error) => {
       alert(`Error loading l2 ${error}`)
@@ -189,7 +190,6 @@ export const ByoaSDK = (props: Props) => {
           throw new Error('Unable to connect provider to modal');
         }
         p.on('accountsChanged', (e: any) => {
-          console.log(e);
           disconnectWallet();
         });
         p.on("chainChanged", (chainId: number) => {
@@ -362,6 +362,7 @@ export const ByoaSDK = (props: Props) => {
             }}
             direction={dialDirection}
           >
+            {props.mode === "l1" && (
             <SpeedDialAction
               key={'sda-connect-wallet'}
               icon={<AccountBalanceWalletIcon />}
@@ -370,23 +371,38 @@ export const ByoaSDK = (props: Props) => {
                 connectWallet();
               }}
             />
+            )}
+            {(props.mode === "l2" || props.mode === undefined) && (
             <SpeedDialAction
               key={'sda-connect-wallet-argent'}
               icon={<AccountBalanceWalletIcon />}
-              tooltipTitle={'Connect Argent'}
+              tooltipTitle={isConnectingArgent ? 'Connecting...' : isArgentConnected ? 'Connected' : 'Connect Argent'}
               onClick={() => {
-                connectArgentWallet();
+                if(isConnectingArgent) return;
+                if(isArgentConnected === false || swo === undefined) {
+                  connectArgentWallet();
+                } else {
+                  alert("Argent Wallet is already connected");
+                }
+                
               }}
             />
+            )}
             {installedApps.map((installedApp, i) => (
               <SpeedDialAction
                 key={`sd-action-${installedApp.id}-${i}`}
                 icon={<img style={{ width: '40px', height: '40px' }} src={resolveIpfs(installedApp.imageURI)} />}
-                tooltipTitle={`${installedApp.app.name} ${installedApp.app.version}`}
+                tooltipTitle={`${installedApp.app.name} ${installedApp.app.version}${runningAppId === `${installedApp.app.id}` ? '(running)' : ''}`}
                 onClick={() => {
+                  if(appIsRunning) {
+                    alert("Only one app may be run at a time currently.");
+                    return;
+                  }
                   if (installedApp.byoaDetails.target === "iframe") { // TODO support javascript main thread plugins, right now it's just iframes as we focus on widgets and design our strategy for plugin security and communication with host apps
                     const c = getSingletonByoaAppContainer();
                     makeOrUpdateSingletonByoaAppIframe(c, resolveIpfs(installedApp.byoaDetails.uri));
+                    setAppIsRunning(true);
+                    setRunningAppId(`${installedApp.app.id}`);
                   }
                 }}
               />

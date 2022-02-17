@@ -33655,17 +33655,17 @@ const ByoaSDK = props => {
   const [argentAddress, setArgentAddress] = useState(undefined);
   const [isArgentConnected, setIsArgentConnected] = useState(false);
   const [isConnectingArgent, setIsConnectingArgent] = useState(false);
+  const [appIsRunning, setAppIsRunning] = useState(false);
+  const [runningAppId, setRunningAppId] = useState("");
   const [installedApps, setInstalledApps] = useState([]);
   const [swo, setSWO] = useState(undefined);
   useEffect(() => {
-    console.log(`SWO: `, swo);
     if (swo === undefined) return;
     setIsConnectingArgent(true);
     loadL2AppData({
       swo: swo,
       address: argentAddress
     }).then(data => {
-      alert('DOne loading l2 data');
       installL2AppsForUse(data);
     }).catch(error => {
       alert(`Error loading l2 ${error}`);
@@ -33708,7 +33708,6 @@ const ByoaSDK = props => {
         }
 
         p.on('accountsChanged', e => {
-          console.log(e);
           disconnectWallet();
         });
         p.on("chainChanged", chainId => {
@@ -33878,19 +33877,25 @@ const ByoaSDK = props => {
     },
     onClick: () => {},
     direction: dialDirection
-  }, createElement(SpeedDialAction, {
+  }, props.mode === "l1" && createElement(SpeedDialAction, {
     key: 'sda-connect-wallet',
     icon: createElement(AccountBalanceWalletIcon, null),
     tooltipTitle: 'Connect Wallet',
     onClick: () => {
       connectWallet();
     }
-  }), createElement(SpeedDialAction, {
+  }), (props.mode === "l2" || props.mode === undefined) && createElement(SpeedDialAction, {
     key: 'sda-connect-wallet-argent',
     icon: createElement(AccountBalanceWalletIcon, null),
-    tooltipTitle: 'Connect Argent',
+    tooltipTitle: isConnectingArgent ? 'Connecting...' : isArgentConnected ? 'Connected' : 'Connect Argent',
     onClick: () => {
-      connectArgentWallet();
+      if (isConnectingArgent) return;
+
+      if (isArgentConnected === false || swo === undefined) {
+        connectArgentWallet();
+      } else {
+        alert("Argent Wallet is already connected");
+      }
     }
   }), installedApps.map((installedApp, i) => createElement(SpeedDialAction, {
     key: `sd-action-${installedApp.id}-${i}`,
@@ -33901,11 +33906,18 @@ const ByoaSDK = props => {
       },
       src: resolveIpfs(installedApp.imageURI)
     }),
-    tooltipTitle: `${installedApp.app.name} ${installedApp.app.version}`,
+    tooltipTitle: `${installedApp.app.name} ${installedApp.app.version}${runningAppId === `${installedApp.app.id}` ? '(running)' : ''}`,
     onClick: () => {
+      if (appIsRunning) {
+        alert("Only one app may be run at a time currently.");
+        return;
+      }
+
       if (installedApp.byoaDetails.target === "iframe") {
         const c = getSingletonByoaAppContainer();
         makeOrUpdateSingletonByoaAppIframe(c, resolveIpfs(installedApp.byoaDetails.uri));
+        setAppIsRunning(true);
+        setRunningAppId(`${installedApp.app.id}`);
       }
     }
   }))))));

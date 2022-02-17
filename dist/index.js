@@ -33961,23 +33961,29 @@ var ByoaSDK = function ByoaSDK(props) {
       isConnectingArgent = _React$useState9[0],
       setIsConnectingArgent = _React$useState9[1];
 
-  var _React$useState10 = React.useState([]),
-      installedApps = _React$useState10[0],
-      setInstalledApps = _React$useState10[1];
+  var _React$useState10 = React.useState(false),
+      appIsRunning = _React$useState10[0],
+      setAppIsRunning = _React$useState10[1];
 
-  var _React$useState11 = React.useState(undefined),
-      swo = _React$useState11[0],
-      setSWO = _React$useState11[1];
+  var _React$useState11 = React.useState(""),
+      runningAppId = _React$useState11[0],
+      setRunningAppId = _React$useState11[1];
+
+  var _React$useState12 = React.useState([]),
+      installedApps = _React$useState12[0],
+      setInstalledApps = _React$useState12[1];
+
+  var _React$useState13 = React.useState(undefined),
+      swo = _React$useState13[0],
+      setSWO = _React$useState13[1];
 
   React.useEffect(function () {
-    console.log("SWO: ", swo);
     if (swo === undefined) return;
     setIsConnectingArgent(true);
     loadL2AppData({
       swo: swo,
       address: argentAddress
     }).then(function (data) {
-      alert('DOne loading l2 data');
       installL2AppsForUse(data);
     })["catch"](function (error) {
       alert("Error loading l2 " + error);
@@ -34063,7 +34069,6 @@ var ByoaSDK = function ByoaSDK(props) {
               }
 
               p.on('accountsChanged', function (e) {
-                console.log(e);
                 disconnectWallet();
               });
               p.on("chainChanged", function (chainId) {
@@ -34266,19 +34271,25 @@ var ByoaSDK = function ByoaSDK(props) {
     },
     onClick: function onClick() {},
     direction: dialDirection
-  }, React.createElement(lab.SpeedDialAction, {
+  }, props.mode === "l1" && React.createElement(lab.SpeedDialAction, {
     key: 'sda-connect-wallet',
     icon: React.createElement(AccountBalanceWalletIcon, null),
     tooltipTitle: 'Connect Wallet',
     onClick: function onClick() {
       connectWallet();
     }
-  }), React.createElement(lab.SpeedDialAction, {
+  }), (props.mode === "l2" || props.mode === undefined) && React.createElement(lab.SpeedDialAction, {
     key: 'sda-connect-wallet-argent',
     icon: React.createElement(AccountBalanceWalletIcon, null),
-    tooltipTitle: 'Connect Argent',
+    tooltipTitle: isConnectingArgent ? 'Connecting...' : isArgentConnected ? 'Connected' : 'Connect Argent',
     onClick: function onClick() {
-      connectArgentWallet();
+      if (isConnectingArgent) return;
+
+      if (isArgentConnected === false || swo === undefined) {
+        connectArgentWallet();
+      } else {
+        alert("Argent Wallet is already connected");
+      }
     }
   }), installedApps.map(function (installedApp, i) {
     return React.createElement(lab.SpeedDialAction, {
@@ -34290,11 +34301,18 @@ var ByoaSDK = function ByoaSDK(props) {
         },
         src: resolveIpfs(installedApp.imageURI)
       }),
-      tooltipTitle: installedApp.app.name + " " + installedApp.app.version,
+      tooltipTitle: installedApp.app.name + " " + installedApp.app.version + (runningAppId === "" + installedApp.app.id ? '(running)' : ''),
       onClick: function onClick() {
+        if (appIsRunning) {
+          alert("Only one app may be run at a time currently.");
+          return;
+        }
+
         if (installedApp.byoaDetails.target === "iframe") {
           var c = getSingletonByoaAppContainer();
           makeOrUpdateSingletonByoaAppIframe(c, resolveIpfs(installedApp.byoaDetails.uri));
+          setAppIsRunning(true);
+          setRunningAppId("" + installedApp.app.id);
         }
       }
     });
