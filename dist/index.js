@@ -33851,6 +33851,16 @@ var useStyles = core.makeStyles({
     background: 'rgba(50,0,0,0.00)',
     pointerEvents: 'none'
   },
+  root_highZ: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    minWidth: '100vw',
+    minHeight: '100vh',
+    background: 'rgba(50,0,0,0.00)',
+    pointerEvents: 'none',
+    zIndex: 1000000000
+  },
   speedDial: {
     position: 'fixed',
     bottom: 20,
@@ -33875,6 +33885,23 @@ function getSingletonByoaAppContainer() {
   e.style.height = '38.2vh';
   document.body.appendChild(e);
   return e;
+}
+
+function toggleSingletonViewSize(size) {
+  var e = document.getElementById(singletonByoaAppContainerId);
+  if (e === null) return;
+
+  switch (size) {
+    case 'small':
+      e.style.width = '24.1vw';
+      e.style.height = '38.2vh';
+      break;
+
+    case 'large':
+      e.style.width = '100vw';
+      e.style.height = '100vh';
+      break;
+  }
 }
 
 var singletonByoaAppIframeId = "byoa-singleton-iframe";
@@ -33963,13 +33990,21 @@ var ByoaSDK = function ByoaSDK(props) {
       starknetNetwork = _React$useState15[0],
       setStarknetNetwork = _React$useState15[1];
 
-  var _React$useState16 = React.useState([]),
-      installedApps = _React$useState16[0],
-      setInstalledApps = _React$useState16[1];
+  var _React$useState16 = React.useState(true),
+      toggleExpandedView = _React$useState16[0],
+      setToggleExpandedView = _React$useState16[1];
 
-  var _React$useState17 = React.useState(undefined),
-      swo = _React$useState17[0],
-      setSWO = _React$useState17[1];
+  var _React$useState17 = React.useState(false),
+      viewIsExpanded = _React$useState17[0],
+      setViewIsExpanded = _React$useState17[1];
+
+  var _React$useState18 = React.useState([]),
+      installedApps = _React$useState18[0],
+      setInstalledApps = _React$useState18[1];
+
+  var _React$useState19 = React.useState(undefined),
+      swo = _React$useState19[0],
+      setSWO = _React$useState19[1];
 
   var providerOptions = {
     walletconnect: {
@@ -34022,6 +34057,10 @@ var ByoaSDK = function ByoaSDK(props) {
     } else {
       setStarknetAddress(default_starknetAddress);
       setStarknetNetwork(default_starknetNetwork);
+    }
+
+    if (props.toggleExpandedView) {
+      setToggleExpandedView(props.toggleExpandedView);
     }
   }, []);
   React.useEffect(function () {
@@ -34288,7 +34327,7 @@ var ByoaSDK = function ByoaSDK(props) {
   };
 
   return React.createElement(core.Box, {
-    className: classes.root,
+    className: toggleExpandedView ? classes.root_highZ : classes.root,
     id: "byoa-hud"
   }, React.createElement(core.Container, {
     className: classes.speedDial
@@ -34358,7 +34397,13 @@ var ByoaSDK = function ByoaSDK(props) {
       tooltipTitle: installedApp.app.name + " " + installedApp.app.version + (runningAppId === "" + installedApp.app.id ? '(running)' : ''),
       onClick: function onClick() {
         if (appIsRunning) {
-          alert("Only one app may be run at a time currently.");
+          if (toggleExpandedView) {
+            toggleSingletonViewSize(viewIsExpanded ? 'small' : 'large');
+            setViewIsExpanded(!viewIsExpanded);
+          } else {
+            alert("Only one app may be run at a time currently.");
+          }
+
           return;
         }
 

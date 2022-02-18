@@ -19,6 +19,7 @@ interface Props {
         address?: string;
         network?: 'goerli' | 'mainnet';
     };
+    toggleExpandedView?: boolean;
 }
 export declare const ByoaSDK: (props: Props) => JSX.Element;
 export {};

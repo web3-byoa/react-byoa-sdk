@@ -33573,6 +33573,16 @@ const useStyles = makeStyles({
     background: 'rgba(50,0,0,0.00)',
     pointerEvents: 'none'
   },
+  root_highZ: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    minWidth: '100vw',
+    minHeight: '100vh',
+    background: 'rgba(50,0,0,0.00)',
+    pointerEvents: 'none',
+    zIndex: 1000000000
+  },
   speedDial: {
     position: 'fixed',
     bottom: 20,
@@ -33597,6 +33607,23 @@ function getSingletonByoaAppContainer() {
   e.style.height = '38.2vh';
   document.body.appendChild(e);
   return e;
+}
+
+function toggleSingletonViewSize(size) {
+  const e = document.getElementById(singletonByoaAppContainerId);
+  if (e === null) return;
+
+  switch (size) {
+    case 'small':
+      e.style.width = '24.1vw';
+      e.style.height = '38.2vh';
+      break;
+
+    case 'large':
+      e.style.width = '100vw';
+      e.style.height = '100vh';
+      break;
+  }
 }
 
 const singletonByoaAppIframeId = "byoa-singleton-iframe";
@@ -33639,6 +33666,8 @@ const ByoaSDK = props => {
   const [byoaContractAddress, setByoaContractAddress] = useState((_props$byoaContractDe = props.byoaContractDetails) === null || _props$byoaContractDe === void 0 ? void 0 : _props$byoaContractDe.address);
   const [starknetAddress, setStarknetAddress] = useState((_props$starknetConfig = props.starknetConfiguration) === null || _props$starknetConfig === void 0 ? void 0 : _props$starknetConfig.address);
   const [starknetNetwork, setStarknetNetwork] = useState((_props$starknetConfig2 = props.starknetConfiguration) === null || _props$starknetConfig2 === void 0 ? void 0 : _props$starknetConfig2.network);
+  const [toggleExpandedView, setToggleExpandedView] = useState(true);
+  const [viewIsExpanded, setViewIsExpanded] = useState(false);
   const [installedApps, setInstalledApps] = useState([]);
   const [swo, setSWO] = useState(undefined);
   const providerOptions = {
@@ -33692,6 +33721,10 @@ const ByoaSDK = props => {
     } else {
       setStarknetAddress(default_starknetAddress);
       setStarknetNetwork(default_starknetNetwork);
+    }
+
+    if (props.toggleExpandedView) {
+      setToggleExpandedView(props.toggleExpandedView);
     }
   }, []);
   useEffect(() => {
@@ -33882,7 +33915,7 @@ const ByoaSDK = props => {
   };
 
   return createElement(Box, {
-    className: classes.root,
+    className: toggleExpandedView ? classes.root_highZ : classes.root,
     id: "byoa-hud"
   }, createElement(Container, {
     className: classes.speedDial
@@ -33951,7 +33984,13 @@ const ByoaSDK = props => {
     tooltipTitle: `${installedApp.app.name} ${installedApp.app.version}${runningAppId === `${installedApp.app.id}` ? '(running)' : ''}`,
     onClick: () => {
       if (appIsRunning) {
-        alert("Only one app may be run at a time currently.");
+        if (toggleExpandedView) {
+          toggleSingletonViewSize(viewIsExpanded ? 'small' : 'large');
+          setViewIsExpanded(!viewIsExpanded);
+        } else {
+          alert("Only one app may be run at a time currently.");
+        }
+
         return;
       }
 
