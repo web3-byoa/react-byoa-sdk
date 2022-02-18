@@ -15,43 +15,74 @@ npm install --save byoa-sdk
 ```tsx
 import React, { Component } from 'react'
 
-import MyComponent from 'byoa-sdk'
+import ByoaSDK from 'byoa-sdk'
 import 'byoa-sdk/dist/index.css'
 
 class Example extends Component {
   render() {
-    return <MyComponent />
+    return <ByoaSDK />
   }
 }
 ```
-
-## Todo
-- Have a stylable button that one can click to connect to wallet
-- listen for wallet connect events from host
-- fetch byoa's from a specific contract address
-- load byoa metadata
-- load a byoa onto the page
-- unload a byoa from the page
-- interface with the byoa with a common interface
 
 ## Example metadata json
 ```json
 {
-  "image": "ipfs://examplecidforimage",
-  "byoa": {
-    "browser" : {
-      "uri" : "ipfs://examplefobrowseruri",
-      "target": "classic"
-    }
-  }
+  "version": "v0.1 (alpha)",
+  "name": "Starkle",
+  "description": "Starkle is a clone of the popular game Wordle. In this version all the words are related to Starkware, Ethereum, Layer 2's and technology!",
+  "image": "ipfs://QmWhKghp3M4cerbQEBVPDgJWudgyq7rAVYLSbcPznf9T8c",
+  "implementationURIs": {
+    "browser": "https://starkle-app.byoa.org"
+  },
+  "substrates": [
+    "browser"
+  ]
 }
 ```
 
+## Props
+### `mode`
+`mode`: `l1` or `l2`. Defaults to `l2`. Represents where you want to source wallet details from.
+
+### `byoaContractDetails`
+#### `address`
+String representing the L1 address on Ethereum for the byoa app registry contract.
+#### `network`
+What network the L1 address resides on.
+
+### `alchemyConfiguration`
+#### `url`
+Connection url to source data from alchemy and read from contracts.
+
+### `infuraConfiguration`
+#### `id`
+For wallet connect configuration.
+
+### `starknetConfiguration`
+#### `address`
+The address on StarkNet for the deployed L2 contract.
+#### `network`
+The testnet/mainnet of StarkNet for the deployed L2 contract.
+
+### `toggleExpandedView`
+`boolean` that `true` means if you click the app icon again it toggles expanded view. If `false` clicking the app icon again does not toggle the view.
+
+
 ## Running
-1. Set up your local smart contract environment, see instructions in that repo
-2. Create apps in your smart contract environment
-3. Use app-store to add a smart contract to your account
-4. run `npm start` in main directory here, then run `npm start` in `example` directory.
+```
+# development of sdk
+yarn start
+
+# Run the example page
+cd ./example
+yarn start
+```
+
+## Building
+```
+yarn build
+```
 
 
 ## License
