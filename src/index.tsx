@@ -38,6 +38,7 @@ interface Props {
     address?: string;
     network?: 'goerli' | 'mainnet';
   };
+  toggleExpandedView?: boolean;
 }
 
 const default_byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
@@ -76,6 +77,16 @@ const useStyles = makeStyles({
     background: 'rgba(50,0,0,0.00)',
     pointerEvents: 'none'
   },
+  root_highZ: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    minWidth: '100vw',
+    minHeight: '100vh',
+    background: 'rgba(50,0,0,0.00)',
+    pointerEvents: 'none',
+    zIndex: 1000000000
+  },
   speedDial: {
     position: 'fixed',
     bottom: 20,
@@ -105,6 +116,22 @@ function getSingletonByoaAppContainer(): HTMLElement {
   e.style.height = '38.2vh';
   document.body.appendChild(e);
   return e;
+}
+
+function toggleSingletonViewSize(size : 'small' | 'large'): void {
+  const e = document.getElementById(singletonByoaAppContainerId);
+  if(e === null) return;
+  switch (size) {
+    case 'small':
+      e.style.width = '24.1vw';
+      e.style.height = '38.2vh';
+      break;
+    case 'large':
+      e.style.width = '100vw';
+      e.style.height = '100vh';
+      break;
+  }
+  
 }
 
 const singletonByoaAppIframeId = "byoa-singleton-iframe";
@@ -144,6 +171,8 @@ export const ByoaSDK = (props: Props) => {
   const [byoaContractAddress, setByoaContractAddress] = React.useState<string|undefined>(props.byoaContractDetails?.address);
   const [starknetAddress, setStarknetAddress] = React.useState<string|undefined>(props.starknetConfiguration?.address);
   const [starknetNetwork, setStarknetNetwork] = React.useState<'goerli'|'mainnet'|undefined>(props.starknetConfiguration?.network);
+  const [toggleExpandedView, setToggleExpandedView] = React.useState<boolean>(true);
+  const [viewIsExpanded, setViewIsExpanded] = React.useState<boolean>(false);
 
   const [installedApps, setInstalledApps] = React.useState<InstalledApp[]>([]);
   const [swo, setSWO] = React.useState<StarknetWindowObject | undefined>(undefined);
@@ -200,6 +229,10 @@ export const ByoaSDK = (props: Props) => {
     } else {
       setStarknetAddress(default_starknetAddress);
       setStarknetNetwork(default_starknetNetwork)
+    }
+
+    if(props.toggleExpandedView) {
+      setToggleExpandedView(props.toggleExpandedView);
     }
   }, []);
 
@@ -389,7 +422,7 @@ export const ByoaSDK = (props: Props) => {
   };
 
   return (
-    <Box className={classes.root} id="byoa-hud">
+    <Box className={toggleExpandedView ? classes.root_highZ : classes.root} id="byoa-hud">
       <Container className={classes.speedDial}>
         <DragMove onDragMove={(e: any) => {
           setTranslateDial({
@@ -462,8 +495,23 @@ export const ByoaSDK = (props: Props) => {
                 icon={<img style={{ width: '40px', height: '40px' }} src={resolveIpfs(installedApp.imageURI)} />}
                 tooltipTitle={`${installedApp.app.name} ${installedApp.app.version}${runningAppId === `${installedApp.app.id}` ? '(running)' : ''}`}
                 onClick={() => {
+                  // Is there any app running?
                   if(appIsRunning) {
-                    alert("Only one app may be run at a time currently.");
+
+                    //Check to see if it is this app that is running
+                    if(runningAppId !== `${installedApp.app.id}`) {
+                      alert("Only one app may be run at a time currently.");
+                      return;
+                    }
+                    
+                    // If it is this app that is running, and we support view size toggling, then do the toggle.
+                    if(toggleExpandedView) {
+                      toggleSingletonViewSize(viewIsExpanded ? 'small' : 'large');
+                      setViewIsExpanded(!viewIsExpanded);
+                    } else {
+                      alert("Only one app may be run at a time currently.");
+                    }
+                    
                     return;
                   }
                   if (installedApp.byoaDetails.target === "iframe") { // TODO support javascript main thread plugins, right now it's just iframes as we focus on widgets and design our strategy for plugin security and communication with host apps
