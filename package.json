@@ -4,7 +4,7 @@
   "description": "SDK for byoa functionality.",
   "author": "pagreczner",
   "license": "MIT",
-  "repository": "web3-byoa/byoa-sdk",
+  "repository": "web3-byoa/react-byoa-sdk",
   "main": "dist/index.js",
   "module": "dist/index.modern.js",
   "source": "src/index.tsx",
