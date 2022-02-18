@@ -495,8 +495,16 @@ export const ByoaSDK = (props: Props) => {
                 icon={<img style={{ width: '40px', height: '40px' }} src={resolveIpfs(installedApp.imageURI)} />}
                 tooltipTitle={`${installedApp.app.name} ${installedApp.app.version}${runningAppId === `${installedApp.app.id}` ? '(running)' : ''}`}
                 onClick={() => {
+                  // Is there any app running?
                   if(appIsRunning) {
+
+                    //Check to see if it is this app that is running
+                    if(runningAppId !== `${installedApp.app.id}`) {
+                      alert("Only one app may be run at a time currently.");
+                      return;
+                    }
                     
+                    // If it is this app that is running, and we support view size toggling, then do the toggle.
                     if(toggleExpandedView) {
                       toggleSingletonViewSize(viewIsExpanded ? 'small' : 'large');
                       setViewIsExpanded(!viewIsExpanded);

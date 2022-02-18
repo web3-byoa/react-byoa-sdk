@@ -34397,6 +34397,11 @@ var ByoaSDK = function ByoaSDK(props) {
       tooltipTitle: installedApp.app.name + " " + installedApp.app.version + (runningAppId === "" + installedApp.app.id ? '(running)' : ''),
       onClick: function onClick() {
         if (appIsRunning) {
+          if (runningAppId !== "" + installedApp.app.id) {
+            alert("Only one app may be run at a time currently.");
+            return;
+          }
+
           if (toggleExpandedView) {
             toggleSingletonViewSize(viewIsExpanded ? 'small' : 'large');
             setViewIsExpanded(!viewIsExpanded);
