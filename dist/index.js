@@ -12,7 +12,6 @@ var Web3 = _interopDefault(require('web3'));
 var Web3Modal = _interopDefault(require('web3modal'));
 var buffer = _interopDefault(require('buffer'));
 var getStarknet = require('@argent/get-starknet');
-var stark = require('starknet/dist/utils/stark');
 
 // A type of promise-like that resolves synchronously and supports only one observer
 const _Pact = /*#__PURE__*/(function() {
@@ -3616,8 +3615,8 @@ var loadL2AppData = function loadL2AppData(params) {
               var _params$swo$provider;
 
               return Promise.resolve((_params$swo$provider = params.swo.provider) === null || _params$swo$provider === void 0 ? void 0 : _params$swo$provider.callContract({
-                contract_address: params.starknetConfiguration.address,
-                entry_point_selector: stark.getSelectorFromName("get_app_len"),
+                contractAddress: params.starknetConfiguration.address,
+                entrypoint: "get_app_len",
                 calldata: [ethers.ethers.BigNumber.from(params.address).toString()]
               })).then(function (getAppLenResult) {
                 function _temp4() {
@@ -3635,16 +3634,16 @@ var loadL2AppData = function loadL2AppData(params) {
                   var _params$swo$provider2;
 
                   return Promise.resolve((_params$swo$provider2 = params.swo.provider) === null || _params$swo$provider2 === void 0 ? void 0 : _params$swo$provider2.callContract({
-                    contract_address: params.starknetConfiguration.address,
-                    entry_point_selector: stark.getSelectorFromName("get_app_array"),
+                    contractAddress: params.starknetConfiguration.address,
+                    entrypoint: "get_app_array",
                     calldata: [ethers.ethers.BigNumber.from(params.address).toString(), "" + i]
                   })).then(function (getAppArrayDataByIndexResult) {
                     var _params$swo$provider3;
 
                     var appIdAtIndex = ethers.ethers.BigNumber.from(getAppArrayDataByIndexResult.result[0]).toNumber();
                     return Promise.resolve((_params$swo$provider3 = params.swo.provider) === null || _params$swo$provider3 === void 0 ? void 0 : _params$swo$provider3.callContract({
-                      contract_address: params.starknetConfiguration.address,
-                      entry_point_selector: stark.getSelectorFromName("get_app_installation"),
+                      contractAddress: params.starknetConfiguration.address,
+                      entrypoint: "get_app_installation",
                       calldata: [ethers.ethers.BigNumber.from(params.address).toString(), "" + i]
                     })).then(function (isInstalledResult) {
                       var _params$swo$provider4;
@@ -3656,8 +3655,8 @@ var loadL2AppData = function loadL2AppData(params) {
                       }
 
                       return Promise.resolve((_params$swo$provider4 = params.swo.provider) === null || _params$swo$provider4 === void 0 ? void 0 : _params$swo$provider4.callContract({
-                        contract_address: params.starknetConfiguration.address,
-                        entry_point_selector: stark.getSelectorFromName("get_app_param_count"),
+                        contractAddress: params.starknetConfiguration.address,
+                        entrypoint: "get_app_param_count",
                         calldata: [ethers.ethers.BigNumber.from(params.address).toString(), "" + i]
                       })).then(function (appParamCountResult) {
                         function _temp2() {
@@ -3684,8 +3683,8 @@ var loadL2AppData = function loadL2AppData(params) {
                           var _params$swo$provider5;
 
                           return Promise.resolve((_params$swo$provider5 = params.swo.provider) === null || _params$swo$provider5 === void 0 ? void 0 : _params$swo$provider5.callContract({
-                            contract_address: params.starknetConfiguration.address,
-                            entry_point_selector: stark.getSelectorFromName("get_app_param_value_array"),
+                            contractAddress: params.starknetConfiguration.address,
+                            entrypoint: "get_app_param_value_array",
                             calldata: [ethers.ethers.BigNumber.from(params.address).toString(), "" + i, "" + j]
                           })).then(function (appParamValuesByIndexResult) {
                             configuredAppParams.push({
