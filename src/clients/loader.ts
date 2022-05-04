@@ -1,6 +1,5 @@
 import { StarknetWindowObject } from '@argent/get-starknet/dist/extension.model';
 import { ethers } from 'ethers';
-import { getSelectorFromName } from 'starknet/dist/utils/stark';
 import { felt_to_str } from '../utils/str_to_felt';
 import Web3 from 'web3';
 import abi from '../utils/abi/Byoa.json';
@@ -50,23 +49,23 @@ const loadL2AppData =  (params : LoadL2DataParams) : Promise<L2AppData[]> => {
             let tAppData : L2AppData[] = [];
             try {
                 let getAppLenResult = await params.swo.provider?.callContract({
-                contract_address: params.starknetConfiguration.address,
-                entry_point_selector: getSelectorFromName("get_app_len"),
+                contractAddress: params.starknetConfiguration.address,
+                entrypoint: "get_app_len",
                 calldata: [ethers.BigNumber.from(params.address).toString()]
                 });
                 let numberOfApps = ethers.BigNumber.from(getAppLenResult.result[0]).toNumber();
                 
                 for(let i = 0; i < numberOfApps; i ++) {
                     let getAppArrayDataByIndexResult = await params.swo.provider?.callContract({
-                        contract_address: params.starknetConfiguration.address,
-                        entry_point_selector: getSelectorFromName("get_app_array"),
+                        contractAddress: params.starknetConfiguration.address,
+                        entrypoint: "get_app_array",
                         calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
                     });
                     let appIdAtIndex = ethers.BigNumber.from(getAppArrayDataByIndexResult.result[0]).toNumber();
 
                     let isInstalledResult = await params.swo.provider?.callContract({
-                        contract_address: params.starknetConfiguration.address,
-                        entry_point_selector: getSelectorFromName("get_app_installation"),
+                        contractAddress: params.starknetConfiguration.address,
+                        entrypoint: "get_app_installation",
                         calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
                     });
 
@@ -76,16 +75,16 @@ const loadL2AppData =  (params : LoadL2DataParams) : Promise<L2AppData[]> => {
                     }
 
                     let appParamCountResult = await params.swo.provider?.callContract({
-                        contract_address: params.starknetConfiguration.address,
-                        entry_point_selector: getSelectorFromName("get_app_param_count"),
+                        contractAddress: params.starknetConfiguration.address,
+                        entrypoint: "get_app_param_count",
                         calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
                     });
 
                     let configuredAppParams : any = [];
                     for(let j = 0; j < ethers.BigNumber.from(appParamCountResult.result[0]).toNumber(); j ++) {
                         let appParamValuesByIndexResult = await params.swo.provider?.callContract({
-                            contract_address: params.starknetConfiguration.address,
-                            entry_point_selector: getSelectorFromName("get_app_param_value_array"),
+                            contractAddress: params.starknetConfiguration.address,
+                            entrypoint: "get_app_param_value_array",
                             calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`, `${j}`]
                         });
                         

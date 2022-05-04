@@ -62,13 +62,13 @@
     "dist"
   ],
   "dependencies": {
-    "@argent/get-starknet": "^2.1.1",
+    "@argent/get-starknet": "^3.3.0",
     "@material-ui/core": "^4.12.3",
     "@material-ui/icons": "^4.11.2",
     "@material-ui/lab": "^4.0.0-alpha.60",
     "@walletconnect/web3-provider": "^1.6.2",
     "ethers": "^5.4.5",
-    "starknet": "^2.5.1",
+    "starknet": "^3.9.0",
     "web3": "^1.5.2",
     "web3modal": "^1.9.4"
   }
