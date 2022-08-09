@@ -3768,7 +3768,7 @@ var default_byoaContractAddress = "0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161";
 var default_providerNetwork = "https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5";
 var default_jrpcProvider = new ethers.ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
 var default_infuraId = "6430aa46e9354b91bea44e464af71f7a";
-var default_starknetAddress = "0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb";
+var default_starknetAddress = "0x0602ddda312f52dac2609a4273c7a731b0e6e4b3aee83c41c6f3b9aa9ac02ae5";
 var default_starknetNetwork = 'goerli';
 window.byoa = {
   context: {

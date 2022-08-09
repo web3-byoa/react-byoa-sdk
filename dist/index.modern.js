@@ -10,245 +10,29 @@ import Web3Modal from 'web3modal';
 import buffer from 'buffer';
 import { getStarknet } from '@argent/get-starknet';
 
-// A type of promise-like that resolves synchronously and supports only one observer
-const _Pact = /*#__PURE__*/(function() {
-	function _Pact() {}
-	_Pact.prototype.then = function(onFulfilled, onRejected) {
-		const result = new _Pact();
-		const state = this.s;
-		if (state) {
-			const callback = state & 1 ? onFulfilled : onRejected;
-			if (callback) {
-				try {
-					_settle(result, 1, callback(this.v));
-				} catch (e) {
-					_settle(result, 2, e);
-				}
-				return result;
-			} else {
-				return this;
-			}
-		}
-		this.o = function(_this) {
-			try {
-				const value = _this.v;
-				if (_this.s & 1) {
-					_settle(result, 1, onFulfilled ? onFulfilled(value) : value);
-				} else if (onRejected) {
-					_settle(result, 1, onRejected(value));
-				} else {
-					_settle(result, 2, value);
-				}
-			} catch (e) {
-				_settle(result, 2, e);
-			}
-		};
-		return result;
-	};
-	return _Pact;
-})();
-
-// Settles a pact synchronously
-function _settle(pact, state, value) {
-	if (!pact.s) {
-		if (value instanceof _Pact) {
-			if (value.s) {
-				if (state & 1) {
-					state = value.s;
-				}
-				value = value.v;
-			} else {
-				value.o = _settle.bind(null, pact, state);
-				return;
-			}
-		}
-		if (value && value.then) {
-			value.then(_settle.bind(null, pact, state), _settle.bind(null, pact, 2));
-			return;
-		}
-		pact.s = state;
-		pact.v = value;
-		const observer = pact.o;
-		if (observer) {
-			observer(pact);
-		}
-	}
-}
-
-function _isSettledPact(thenable) {
-	return thenable instanceof _Pact && thenable.s & 1;
-}
-
-// Asynchronously iterate through an object that has a length property, passing the index as the first argument to the callback (even as the length property changes)
-function _forTo(array, body, check) {
-	var i = -1, pact, reject;
-	function _cycle(result) {
-		try {
-			while (++i < array.length && (!check || !check())) {
-				result = body(i);
-				if (result && result.then) {
-					if (_isSettledPact(result)) {
-						result = result.v;
-					} else {
-						result.then(_cycle, reject || (reject = _settle.bind(null, pact = new _Pact(), 2)));
-						return;
-					}
-				}
-			}
-			if (pact) {
-				_settle(pact, 1, result);
-			} else {
-				pact = result;
-			}
-		} catch (e) {
-			_settle(pact || (pact = new _Pact()), 2, e);
-		}
-	}
-	_cycle();
-	return pact;
-}
-
-const _iteratorSymbol = /*#__PURE__*/ typeof Symbol !== "undefined" ? (Symbol.iterator || (Symbol.iterator = Symbol("Symbol.iterator"))) : "@@iterator";
-
-const _asyncIteratorSymbol = /*#__PURE__*/ typeof Symbol !== "undefined" ? (Symbol.asyncIterator || (Symbol.asyncIterator = Symbol("Symbol.asyncIterator"))) : "@@asyncIterator";
-
-// Asynchronously implement a generic for loop
-function _for(test, update, body) {
-	var stage;
-	for (;;) {
-		var shouldContinue = test();
-		if (_isSettledPact(shouldContinue)) {
-			shouldContinue = shouldContinue.v;
-		}
-		if (!shouldContinue) {
-			return result;
-		}
-		if (shouldContinue.then) {
-			stage = 0;
-			break;
-		}
-		var result = body();
-		if (result && result.then) {
-			if (_isSettledPact(result)) {
-				result = result.s;
-			} else {
-				stage = 1;
-				break;
-			}
-		}
-		if (update) {
-			var updateValue = update();
-			if (updateValue && updateValue.then && !_isSettledPact(updateValue)) {
-				stage = 2;
-				break;
-			}
-		}
-	}
-	var pact = new _Pact();
-	var reject = _settle.bind(null, pact, 2);
-	(stage === 0 ? shouldContinue.then(_resumeAfterTest) : stage === 1 ? result.then(_resumeAfterBody) : updateValue.then(_resumeAfterUpdate)).then(void 0, reject);
-	return pact;
-	function _resumeAfterBody(value) {
-		result = value;
-		do {
-			if (update) {
-				updateValue = update();
-				if (updateValue && updateValue.then && !_isSettledPact(updateValue)) {
-					updateValue.then(_resumeAfterUpdate).then(void 0, reject);
-					return;
-				}
-			}
-			shouldContinue = test();
-			if (!shouldContinue || (_isSettledPact(shouldContinue) && !shouldContinue.v)) {
-				_settle(pact, 1, result);
-				return;
-			}
-			if (shouldContinue.then) {
-				shouldContinue.then(_resumeAfterTest).then(void 0, reject);
-				return;
-			}
-			result = body();
-			if (_isSettledPact(result)) {
-				result = result.v;
-			}
-		} while (!result || !result.then);
-		result.then(_resumeAfterBody).then(void 0, reject);
-	}
-	function _resumeAfterTest(shouldContinue) {
-		if (shouldContinue) {
-			result = body();
-			if (result && result.then) {
-				result.then(_resumeAfterBody).then(void 0, reject);
-			} else {
-				_resumeAfterBody(result);
-			}
-		} else {
-			_settle(pact, 1, result);
-		}
-	}
-	function _resumeAfterUpdate() {
-		if (shouldContinue = test()) {
-			if (shouldContinue.then) {
-				shouldContinue.then(_resumeAfterTest).then(void 0, reject);
-			} else {
-				_resumeAfterTest(shouldContinue);
-			}
-		} else {
-			_settle(pact, 1, result);
-		}
-	}
-}
-
-// Asynchronously call a function and send errors to recovery continuation
-function _catch(body, recover) {
-	try {
-		var result = body();
-	} catch(e) {
-		return recover(e);
-	}
-	if (result && result.then) {
-		return result.then(void 0, recover);
-	}
-	return result;
-}
-
-// Asynchronously await a promise and pass the result to a finally continuation
-function _finallyRethrows(body, finalizer) {
-	try {
-		var result = body();
-	} catch (e) {
-		return finalizer(true, e);
-	}
-	if (result && result.then) {
-		return result.then(finalizer.bind(null, false), finalizer.bind(null, true));
-	}
-	return finalizer(false, result);
-}
-
 function DragMove(props) {
-  var onPointerDown = props.onPointerDown,
-      onPointerUp = props.onPointerUp,
-      onPointerMove = props.onPointerMove,
-      onDragMove = props.onDragMove,
-      children = props.children,
-      style = props.style,
-      className = props.className;
+  const {
+    onPointerDown,
+    onPointerUp,
+    onPointerMove,
+    onDragMove,
+    children,
+    style,
+    className
+  } = props;
+  const [isDragging, setIsDragging] = useState(false);
 
-  var _useState = useState(false),
-      isDragging = _useState[0],
-      setIsDragging = _useState[1];
-
-  var handlePointerDown = function handlePointerDown(e) {
+  const handlePointerDown = e => {
     setIsDragging(true);
     onPointerDown(e);
   };
 
-  var handlePointerUp = function handlePointerUp(e) {
+  const handlePointerUp = e => {
     setIsDragging(false);
     onPointerUp(e);
   };
 
-  var handlePointerMove = function handlePointerMove(e) {
+  const handlePointerMove = e => {
     if (isDragging) onDragMove(e);
     onPointerMove(e);
   };
@@ -262,9 +46,9 @@ function DragMove(props) {
   }, children);
 }
 DragMove.defaultProps = {
-  onPointerDown: function onPointerDown() {},
-  onPointerUp: function onPointerUp() {},
-  onPointerMove: function onPointerMove() {}
+  onPointerDown: () => {},
+  onPointerUp: () => {},
+  onPointerMove: () => {}
 };
 
 var _format = "hh-sol-artifact-1";
@@ -2900,54 +2684,54 @@ var baseTable = {
 };
 
 var baseTable$1 = {
-	__proto__: null,
-	identity: identity$1,
-	ip4: ip4,
-	tcp: tcp,
-	sha1: sha1,
-	blake3: blake3,
-	dccp: dccp,
-	ip6: ip6,
-	ip6zone: ip6zone,
-	path: path,
-	multicodec: multicodec,
-	multihash: multihash,
-	multiaddr: multiaddr,
-	multibase: multibase,
-	dns: dns,
-	dns4: dns4,
-	dns6: dns6,
-	dnsaddr: dnsaddr,
-	protobuf: protobuf,
-	cbor: cbor,
-	raw: raw,
-	rlp: rlp,
-	bencode: bencode,
-	sctp: sctp,
-	md4: md4,
-	md5: md5,
-	bmt: bmt,
-	zeronet: zeronet,
-	udp: udp,
-	udt: udt,
-	utp: utp,
-	unix: unix,
-	p2p: p2p,
-	ipfs: ipfs,
-	https: https,
-	onion: onion,
-	onion3: onion3,
-	garlic64: garlic64,
-	garlic32: garlic32,
-	tls: tls,
-	quic: quic,
-	ws: ws,
-	wss: wss,
-	http: http,
-	json: json,
-	messagepack: messagepack,
-	x11: x11,
-	'default': baseTable
+  __proto__: null,
+  identity: identity$1,
+  ip4: ip4,
+  tcp: tcp,
+  sha1: sha1,
+  blake3: blake3,
+  dccp: dccp,
+  ip6: ip6,
+  ip6zone: ip6zone,
+  path: path,
+  multicodec: multicodec,
+  multihash: multihash,
+  multiaddr: multiaddr,
+  multibase: multibase,
+  dns: dns,
+  dns4: dns4,
+  dns6: dns6,
+  dnsaddr: dnsaddr,
+  protobuf: protobuf,
+  cbor: cbor,
+  raw: raw,
+  rlp: rlp,
+  bencode: bencode,
+  sctp: sctp,
+  md4: md4,
+  md5: md5,
+  bmt: bmt,
+  zeronet: zeronet,
+  udp: udp,
+  udt: udt,
+  utp: utp,
+  unix: unix,
+  p2p: p2p,
+  ipfs: ipfs,
+  https: https,
+  onion: onion,
+  onion3: onion3,
+  garlic64: garlic64,
+  garlic32: garlic32,
+  tls: tls,
+  quic: quic,
+  ws: ws,
+  wss: wss,
+  http: http,
+  json: json,
+  messagepack: messagepack,
+  x11: x11,
+  'default': baseTable
 };
 
 var codecs = getCjsExportFromNamespace(baseTable$1);
@@ -3567,206 +3351,147 @@ _CID.codecs = codecs;
 
 var src$4 = _CID;
 
-var resolveIpfs = function resolveIpfs(ipfsURI) {
+const resolveIpfs = ipfsURI => {
   if (ipfsURI.indexOf("ipfs://") >= 0) {
-    var comps = ipfsURI.split("ipfs://");
-    var uri = comps[1];
+    let comps = ipfsURI.split("ipfs://");
+    let uri = comps[1];
 
     if (uri.indexOf("ipfs/") >= 0) {
-      return "https://cloudflare-ipfs.com/" + uri;
+      return `https://cloudflare-ipfs.com/${uri}`;
     } else {
-      return "https://" + new src$4(uri).toV1().toString() + ".ipfs.cf-ipfs.com";
+      return `https://${new src$4(uri).toV1().toString()}.ipfs.cf-ipfs.com`;
     }
   } else {
     return ipfsURI;
   }
 };
 
-var felt_to_str = function felt_to_str(input) {
-  var parsed = input;
+const felt_to_str = input => {
+  let parsed = input;
   if (input.indexOf('0x') === 0) parsed = input.split('0x')[1];
-  var output = "";
+  let output = "";
 
   if (parsed.length % 2 === 1) {
     parsed = "0" + parsed;
   }
 
-  for (var i = 0; i < parsed.length; i += 2) {
-    var curr = parsed.slice(i, i + 2);
-    var num = BigNumber.from("0x" + curr);
+  for (let i = 0; i < parsed.length; i += 2) {
+    let curr = parsed.slice(i, i + 2);
+    let num = BigNumber.from(`0x${curr}`);
     output += String.fromCharCode(num.toNumber());
   }
 
   return output;
 };
 
-var loadL2AppData = function loadL2AppData(params) {
-  return new Promise(function (resolve, reject) {
-    try {
-      var _temp7 = function () {
-        if (params.swo) {
-          var tAppData = [];
+const loadL2AppData = params => {
+  return new Promise(async (resolve, reject) => {
+    if (params.swo) {
+      let tAppData = [];
 
-          var _temp8 = _finallyRethrows(function () {
-            return _catch(function () {
-              var _params$swo$provider;
+      try {
+        var _params$swo$provider;
 
-              return Promise.resolve((_params$swo$provider = params.swo.provider) === null || _params$swo$provider === void 0 ? void 0 : _params$swo$provider.callContract({
-                contractAddress: params.starknetConfiguration.address,
-                entrypoint: "get_app_len",
-                calldata: [ethers.BigNumber.from(params.address).toString()]
-              })).then(function (getAppLenResult) {
-                function _temp4() {
-                  resolve(tAppData);
-                }
+        let getAppLenResult = await ((_params$swo$provider = params.swo.provider) === null || _params$swo$provider === void 0 ? void 0 : _params$swo$provider.callContract({
+          contractAddress: params.starknetConfiguration.address,
+          entrypoint: "get_app_len",
+          calldata: [ethers.BigNumber.from(params.address).toString()]
+        }));
+        let numberOfApps = ethers.BigNumber.from(getAppLenResult.result[0]).toNumber();
 
-                var numberOfApps = ethers.BigNumber.from(getAppLenResult.result[0]).toNumber();
-                var i = 0;
+        for (let i = 0; i < numberOfApps; i++) {
+          var _params$swo$provider2, _params$swo$provider3, _params$swo$provider4;
 
-                var _temp3 = _for(function () {
-                  return i < numberOfApps;
-                }, function () {
-                  return i++;
-                }, function () {
-                  var _params$swo$provider2;
+          let getAppArrayDataByIndexResult = await ((_params$swo$provider2 = params.swo.provider) === null || _params$swo$provider2 === void 0 ? void 0 : _params$swo$provider2.callContract({
+            contractAddress: params.starknetConfiguration.address,
+            entrypoint: "get_app_array",
+            calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
+          }));
+          let appIdAtIndex = ethers.BigNumber.from(getAppArrayDataByIndexResult.result[0]).toNumber();
+          let isInstalledResult = await ((_params$swo$provider3 = params.swo.provider) === null || _params$swo$provider3 === void 0 ? void 0 : _params$swo$provider3.callContract({
+            contractAddress: params.starknetConfiguration.address,
+            entrypoint: "get_app_installation",
+            calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
+          }));
+          let isInstalled = ethers.BigNumber.from(isInstalledResult.result[0]).toNumber() === 1;
 
-                  return Promise.resolve((_params$swo$provider2 = params.swo.provider) === null || _params$swo$provider2 === void 0 ? void 0 : _params$swo$provider2.callContract({
-                    contractAddress: params.starknetConfiguration.address,
-                    entrypoint: "get_app_array",
-                    calldata: [ethers.BigNumber.from(params.address).toString(), "" + i]
-                  })).then(function (getAppArrayDataByIndexResult) {
-                    var _params$swo$provider3;
+          if (!isInstalled) {
+            continue;
+          }
 
-                    var appIdAtIndex = ethers.BigNumber.from(getAppArrayDataByIndexResult.result[0]).toNumber();
-                    return Promise.resolve((_params$swo$provider3 = params.swo.provider) === null || _params$swo$provider3 === void 0 ? void 0 : _params$swo$provider3.callContract({
-                      contractAddress: params.starknetConfiguration.address,
-                      entrypoint: "get_app_installation",
-                      calldata: [ethers.BigNumber.from(params.address).toString(), "" + i]
-                    })).then(function (isInstalledResult) {
-                      var _params$swo$provider4;
+          let appParamCountResult = await ((_params$swo$provider4 = params.swo.provider) === null || _params$swo$provider4 === void 0 ? void 0 : _params$swo$provider4.callContract({
+            contractAddress: params.starknetConfiguration.address,
+            entrypoint: "get_app_param_count",
+            calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`]
+          }));
+          let configuredAppParams = [];
 
-                      var isInstalled = ethers.BigNumber.from(isInstalledResult.result[0]).toNumber() === 1;
+          for (let j = 0; j < ethers.BigNumber.from(appParamCountResult.result[0]).toNumber(); j++) {
+            var _params$swo$provider5;
 
-                      if (!isInstalled) {
-                        return;
-                      }
-
-                      return Promise.resolve((_params$swo$provider4 = params.swo.provider) === null || _params$swo$provider4 === void 0 ? void 0 : _params$swo$provider4.callContract({
-                        contractAddress: params.starknetConfiguration.address,
-                        entrypoint: "get_app_param_count",
-                        calldata: [ethers.BigNumber.from(params.address).toString(), "" + i]
-                      })).then(function (appParamCountResult) {
-                        function _temp2() {
-                          return Promise.resolve(fetchAppDetailById(appIdAtIndex, params)).then(function (l1AppData) {
-                            tAppData.push({
-                              AppId: appIdAtIndex,
-                              AppIndex: i,
-                              Params: configuredAppParams,
-                              Status: 'ACCEPTED',
-                              IsInstalled: ethers.BigNumber.from(isInstalledResult.result[0]).toNumber() === 1,
-                              ByoaApp: l1AppData
-                            });
-                          });
-                        }
-
-                        var configuredAppParams = [];
-                        var j = 0;
-
-                        var _temp = _for(function () {
-                          return j < ethers.BigNumber.from(appParamCountResult.result[0]).toNumber();
-                        }, function () {
-                          return j++;
-                        }, function () {
-                          var _params$swo$provider5;
-
-                          return Promise.resolve((_params$swo$provider5 = params.swo.provider) === null || _params$swo$provider5 === void 0 ? void 0 : _params$swo$provider5.callContract({
-                            contractAddress: params.starknetConfiguration.address,
-                            entrypoint: "get_app_param_value_array",
-                            calldata: [ethers.BigNumber.from(params.address).toString(), "" + i, "" + j]
-                          })).then(function (appParamValuesByIndexResult) {
-                            configuredAppParams.push({
-                              ID: felt_to_str(appParamValuesByIndexResult.result[0]),
-                              Value: felt_to_str(appParamValuesByIndexResult.result[1])
-                            });
-                          });
-                        });
-
-                        return _temp && _temp.then ? _temp.then(_temp2) : _temp2(_temp);
-                      });
-                    });
-                  });
-                });
-
-                return _temp3 && _temp3.then ? _temp3.then(_temp4) : _temp4(_temp3);
-              });
-            }, function (error) {
-              reject(error);
+            let appParamValuesByIndexResult = await ((_params$swo$provider5 = params.swo.provider) === null || _params$swo$provider5 === void 0 ? void 0 : _params$swo$provider5.callContract({
+              contractAddress: params.starknetConfiguration.address,
+              entrypoint: "get_app_param_value_array",
+              calldata: [ethers.BigNumber.from(params.address).toString(), `${i}`, `${j}`]
+            }));
+            configuredAppParams.push({
+              ID: felt_to_str(appParamValuesByIndexResult.result[0]),
+              Value: felt_to_str(appParamValuesByIndexResult.result[1])
             });
-          }, function (_wasThrown, _result) {
-            if (_wasThrown) throw _result;
-            return _result;
+          }
+
+          let l1AppData = await fetchAppDetailById(appIdAtIndex, params);
+          tAppData.push({
+            AppId: appIdAtIndex,
+            AppIndex: i,
+            Params: configuredAppParams,
+            Status: 'ACCEPTED',
+            IsInstalled: ethers.BigNumber.from(isInstalledResult.result[0]).toNumber() === 1,
+            ByoaApp: l1AppData
           });
-
-          if (_temp8 && _temp8.then) return _temp8.then(function () {});
-        } else {
-          resolve([]);
         }
-      }();
 
-      return Promise.resolve(_temp7 && _temp7.then ? _temp7.then(function () {}) : void 0);
-    } catch (e) {
-      return Promise.reject(e);
+        resolve(tAppData);
+      } catch (error) {
+        reject(error);
+      } finally {}
+    } else {
+      resolve([]);
     }
   });
 };
 
-var fetchAppDetailById = function fetchAppDetailById(appId, params) {
-  try {
-    return Promise.resolve(new Promise(function (resolve, reject) {
-      try {
-        var w3 = new Web3(params.alchemyConfiguration.url);
+const fetchAppDetailById = async (appId, params) => {
+  return new Promise(async (resolve, reject) => {
+    let w3 = new Web3(params.alchemyConfiguration.url);
 
-        var _temp10 = _finallyRethrows(function () {
-          return _catch(function () {
-            var contract = new w3.eth.Contract(abi$1.abi, params.byoaContractDetails.address);
-            return Promise.resolve(contract.methods.getAppDetailsById(appId).call()).then(function (appDetails) {
-              var app = {
-                id: appId,
-                name: appDetails[0],
-                description: appDetails[1],
-                tokenURI: appDetails[2],
-                owner: appDetails[3],
-                price: parseInt(appDetails[4]),
-                address: params.byoaContractDetails.address,
-                version: 'beta v0.1'
-              };
-              resolve(app);
-            });
-          }, function (error) {
-            console.log("Error fetching apps: " + error);
-            reject(error);
-          });
-        }, function (_wasThrown2, _result2) {
-          if (_wasThrown2) throw _result2;
-          return _result2;
-        });
-
-        return Promise.resolve(_temp10 && _temp10.then ? _temp10.then(function () {}) : void 0);
-      } catch (e) {
-        return Promise.reject(e);
-      }
-    }));
-  } catch (e) {
-    return Promise.reject(e);
-  }
+    try {
+      let contract = new w3.eth.Contract(abi$1.abi, params.byoaContractDetails.address);
+      let appDetails = await contract.methods.getAppDetailsById(appId).call();
+      let app = {
+        id: appId,
+        name: appDetails[0],
+        description: appDetails[1],
+        tokenURI: appDetails[2],
+        owner: appDetails[3],
+        price: parseInt(appDetails[4]),
+        address: params.byoaContractDetails.address,
+        version: 'beta v0.1'
+      };
+      resolve(app);
+    } catch (error) {
+      console.log(`Error fetching apps: ${error}`);
+      reject(error);
+    } finally {}
+  });
 };
 
-var default_byoaContractAddress = "0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161";
-var default_providerNetwork = "https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5";
-var default_jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
-var default_infuraId = "6430aa46e9354b91bea44e464af71f7a";
-var default_starknetAddress = "0x01fa8f8e9063af256155ba4c1442a9994c8f99da84eca99a97f01b2316d1daeb";
-var default_starknetNetwork = 'goerli';
+const default_byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`;
+const default_providerNetwork = `https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5`;
+const default_jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
+const default_infuraId = "6430aa46e9354b91bea44e464af71f7a";
+const default_starknetAddress = "0x0602ddda312f52dac2609a4273c7a731b0e6e4b3aee83c41c6f3b9aa9ac02ae5";
+const default_starknetNetwork = 'goerli';
 window.byoa = {
   context: {
     target: {
@@ -3775,14 +3500,14 @@ window.byoa = {
     ethers: ethers,
     provider: ethers.getDefaultProvider(default_providerNetwork),
     jrpcProvider: default_jrpcProvider,
-    addDataListener: function addDataListener(cb) {
+    addDataListener: cb => {
     },
     account: {
       address: null
     }
   }
 };
-var useStyles = makeStyles({
+const useStyles = makeStyles({
   root: {
     position: 'fixed',
     top: 0,
@@ -3812,12 +3537,12 @@ var useStyles = makeStyles({
     textTransform: 'none'
   }
 });
-var singletonByoaAppContainerId = "byoa-singleton-container";
+const singletonByoaAppContainerId = "byoa-singleton-container";
 
 function getSingletonByoaAppContainer() {
-  var j = document.getElementById(singletonByoaAppContainerId);
+  const j = document.getElementById(singletonByoaAppContainerId);
   if (j !== null) return j;
-  var e = document.createElement("div");
+  const e = document.createElement("div");
   e.setAttribute("id", singletonByoaAppContainerId);
   e.style.position = 'absolute';
   e.style.right = '1vw';
@@ -3829,7 +3554,7 @@ function getSingletonByoaAppContainer() {
 }
 
 function toggleSingletonViewSize(size) {
-  var e = document.getElementById(singletonByoaAppContainerId);
+  const e = document.getElementById(singletonByoaAppContainerId);
   if (e === null) return;
 
   switch (size) {
@@ -3845,13 +3570,13 @@ function toggleSingletonViewSize(size) {
   }
 }
 
-var singletonByoaAppIframeId = "byoa-singleton-iframe";
+const singletonByoaAppIframeId = "byoa-singleton-iframe";
 
 function makeOrUpdateSingletonByoaAppIframe(container, src) {
-  var j = document.getElementById(singletonByoaAppIframeId);
+  const j = document.getElementById(singletonByoaAppIframeId);
 
   if (j === null) {
-    var e = document.createElement("iframe");
+    const e = document.createElement("iframe");
     e.setAttribute("id", singletonByoaAppIframeId);
     e.setAttribute("src", src);
     e.style.width = '100%';
@@ -3863,108 +3588,50 @@ function makeOrUpdateSingletonByoaAppIframe(container, src) {
   }
 }
 
-var ByoaSDK = function ByoaSDK(props) {
+const ByoaSDK = props => {
   var _props$alchemyConfigu, _props$byoaContractDe, _props$starknetConfig, _props$starknetConfig2, _props$infuraConfigur, _props$alchemyConfigu2;
 
-  var classes = useStyles();
-
-  var _React$useState = useState({
+  const classes = useStyles();
+  const [translateDial, setTranslateDial] = useState({
     x: 0,
     y: 0
-  }),
-      translateDial = _React$useState[0],
-      setTranslateDial = _React$useState[1];
-
-  var _React$useState2 = useState("up"),
-      dialDirection = _React$useState2[0],
-      setDialDirection = _React$useState2[1];
-
-  var _React$useState3 = useState(false),
-      openDial = _React$useState3[0],
-      setOpenDial = _React$useState3[1];
-
-  var _React$useState4 = useState(null),
-      provider = _React$useState4[0],
-      setProvider = _React$useState4[1];
-
-  var _React$useState5 = useState((_props$alchemyConfigu = props.alchemyConfiguration) === null || _props$alchemyConfigu === void 0 ? void 0 : _props$alchemyConfigu.url),
-      providerNetwork = _React$useState5[0],
-      setProviderNetwork = _React$useState5[1];
-
-  var _React$useState6 = useState(null),
-      web3 = _React$useState6[0],
-      setWeb3 = _React$useState6[1];
-
-  var _React$useState7 = useState(null),
-      accountAddress = _React$useState7[0],
-      setAccountAddress = _React$useState7[1];
-
-  var _React$useState8 = useState(undefined),
-      argentAddress = _React$useState8[0],
-      setArgentAddress = _React$useState8[1];
-
-  var _React$useState9 = useState(false),
-      isArgentConnected = _React$useState9[0],
-      setIsArgentConnected = _React$useState9[1];
-
-  var _React$useState10 = useState(false),
-      isConnectingArgent = _React$useState10[0],
-      setIsConnectingArgent = _React$useState10[1];
-
-  var _React$useState11 = useState(false),
-      appIsRunning = _React$useState11[0],
-      setAppIsRunning = _React$useState11[1];
-
-  var _React$useState12 = useState(""),
-      runningAppId = _React$useState12[0],
-      setRunningAppId = _React$useState12[1];
-
-  var _React$useState13 = useState((_props$byoaContractDe = props.byoaContractDetails) === null || _props$byoaContractDe === void 0 ? void 0 : _props$byoaContractDe.address),
-      byoaContractAddress = _React$useState13[0],
-      setByoaContractAddress = _React$useState13[1];
-
-  var _React$useState14 = useState((_props$starknetConfig = props.starknetConfiguration) === null || _props$starknetConfig === void 0 ? void 0 : _props$starknetConfig.address),
-      starknetAddress = _React$useState14[0],
-      setStarknetAddress = _React$useState14[1];
-
-  var _React$useState15 = useState((_props$starknetConfig2 = props.starknetConfiguration) === null || _props$starknetConfig2 === void 0 ? void 0 : _props$starknetConfig2.network),
-      starknetNetwork = _React$useState15[0],
-      setStarknetNetwork = _React$useState15[1];
-
-  var _React$useState16 = useState(true),
-      toggleExpandedView = _React$useState16[0],
-      setToggleExpandedView = _React$useState16[1];
-
-  var _React$useState17 = useState(false),
-      viewIsExpanded = _React$useState17[0],
-      setViewIsExpanded = _React$useState17[1];
-
-  var _React$useState18 = useState([]),
-      installedApps = _React$useState18[0],
-      setInstalledApps = _React$useState18[1];
-
-  var _React$useState19 = useState(undefined),
-      swo = _React$useState19[0],
-      setSWO = _React$useState19[1];
-
-  var providerOptions = {
+  });
+  const [dialDirection, setDialDirection] = useState("up");
+  const [openDial, setOpenDial] = useState(false);
+  const [provider, setProvider] = useState(null);
+  const [providerNetwork, setProviderNetwork] = useState((_props$alchemyConfigu = props.alchemyConfiguration) === null || _props$alchemyConfigu === void 0 ? void 0 : _props$alchemyConfigu.url);
+  const [web3, setWeb3] = useState(null);
+  const [accountAddress, setAccountAddress] = useState(null);
+  const [argentAddress, setArgentAddress] = useState(undefined);
+  const [isArgentConnected, setIsArgentConnected] = useState(false);
+  const [isConnectingArgent, setIsConnectingArgent] = useState(false);
+  const [appIsRunning, setAppIsRunning] = useState(false);
+  const [runningAppId, setRunningAppId] = useState("");
+  const [byoaContractAddress, setByoaContractAddress] = useState((_props$byoaContractDe = props.byoaContractDetails) === null || _props$byoaContractDe === void 0 ? void 0 : _props$byoaContractDe.address);
+  const [starknetAddress, setStarknetAddress] = useState((_props$starknetConfig = props.starknetConfiguration) === null || _props$starknetConfig === void 0 ? void 0 : _props$starknetConfig.address);
+  const [starknetNetwork, setStarknetNetwork] = useState((_props$starknetConfig2 = props.starknetConfiguration) === null || _props$starknetConfig2 === void 0 ? void 0 : _props$starknetConfig2.network);
+  const [toggleExpandedView, setToggleExpandedView] = useState(true);
+  const [viewIsExpanded, setViewIsExpanded] = useState(false);
+  const [installedApps, setInstalledApps] = useState([]);
+  const [swo, setSWO] = useState(undefined);
+  const providerOptions = {
     walletconnect: {
       display: {
         name: "Mobile"
       },
-      "package": WalletConnectProvider,
+      package: WalletConnectProvider,
       options: {
         infuraId: (_props$infuraConfigur = props.infuraConfiguration) !== null && _props$infuraConfigur !== void 0 && _props$infuraConfigur.id ? props.infuraConfiguration.id : default_infuraId
       }
     }
   };
-  var web3Modal = new Web3Modal({
+  const web3Modal = new Web3Modal({
     network: (_props$alchemyConfigu2 = props.alchemyConfiguration) !== null && _props$alchemyConfigu2 !== void 0 && _props$alchemyConfigu2.url ? props.alchemyConfiguration.url : default_providerNetwork,
     cacheProvider: true,
     disableInjectedProvider: false,
-    providerOptions: providerOptions
+    providerOptions
   });
-  useEffect(function () {
+  useEffect(() => {
     var _props$alchemyConfigu3;
 
     if ((_props$alchemyConfigu3 = props.alchemyConfiguration) !== null && _props$alchemyConfigu3 !== void 0 && _props$alchemyConfigu3.url) {
@@ -4004,7 +3671,7 @@ var ByoaSDK = function ByoaSDK(props) {
       setToggleExpandedView(props.toggleExpandedView);
     }
   }, []);
-  useEffect(function () {
+  useEffect(() => {
     if (swo === undefined) return;
     setIsConnectingArgent(true);
     loadL2AppData({
@@ -4020,15 +3687,15 @@ var ByoaSDK = function ByoaSDK(props) {
         address: starknetAddress,
         network: starknetNetwork
       }
-    }).then(function (data) {
+    }).then(data => {
       installL2AppsForUse(data);
-    })["catch"](function (error) {
-      alert("Error loading l2 " + error);
-    })["finally"](function () {
+    }).catch(error => {
+      alert(`Error loading l2 ${error}`);
+    }).finally(() => {
       setIsConnectingArgent(false);
     });
   }, [isArgentConnected]);
-  useState(function () {
+  useState(() => {
     if (swo === undefined) return;
 
     if (swo.isConnected != isArgentConnected) {
@@ -4036,234 +3703,158 @@ var ByoaSDK = function ByoaSDK(props) {
     }
   }, [swo === null || swo === void 0 ? void 0 : swo.isConnected]);
 
-  var connectArgentWallet = function connectArgentWallet() {
+  const connectArgentWallet = async () => {
     try {
-      var _temp2 = _catch(function () {
-        var starknet = getStarknet();
-        setSWO(starknet);
-        return Promise.resolve(starknet.enable()).then(function (_ref) {
-          var userWalletContractAddress = _ref[0];
+      const starknet = getStarknet();
+      setSWO(starknet);
+      const [userWalletContractAddress] = await starknet.enable();
 
-          if (userWalletContractAddress.length > 0) {
-            setArgentAddress(userWalletContractAddress);
-            setIsArgentConnected(starknet.isConnected);
-          }
-        });
-      }, function (error) {
-        console.log("Got Starknet Error: ", error);
-      });
-
-      return Promise.resolve(_temp2 && _temp2.then ? _temp2.then(function () {}) : void 0);
-    } catch (e) {
-      return Promise.reject(e);
+      if (userWalletContractAddress.length > 0) {
+        setArgentAddress(userWalletContractAddress);
+        setIsArgentConnected(starknet.isConnected);
+      }
+    } catch (error) {
+      console.log(`Got Starknet Error: `, error);
     }
   };
 
-  var connectWallet = function connectWallet() {
+  const connectWallet = async () => {
     try {
-      var _exit2 = false;
-      return Promise.resolve(_catch(function () {
-        function _temp4(_result) {
-          if (_exit2) return _result;
-          var w3 = web3;
+      let p = provider;
 
-          if (w3 === null) {
-            w3 = new Web3(p);
+      if (p === null) {
+        p = await web3Modal.connect();
 
-            if (w3 === null) {
-              throw new Error('Unable to connect web3');
-            }
-
-            setWeb3(w3);
-          }
-
-          return Promise.resolve(p.request({
-            method: 'eth_accounts'
-          })).then(function (accounts) {
-            if (accounts.length > 0) {
-              setAccountAddress(accounts[0]);
-              setTimeout(function () {
-                try {
-                  refreshMyApps(accounts[0]);
-                  return Promise.resolve();
-                } catch (e) {
-                  return Promise.reject(e);
-                }
-              }, 2000);
-            }
-          });
+        if (p === null) {
+          throw new Error('Unable to connect provider to modal');
         }
 
-        var p = provider;
+        p.on('accountsChanged', e => {
+          disconnectWallet();
+        });
+        setProvider(p);
+      }
 
-        var _temp3 = function () {
-          if (p === null) {
-            return Promise.resolve(web3Modal.connect()).then(function (_web3Modal$connect) {
-              p = _web3Modal$connect;
+      let w3 = web3;
 
-              if (p === null) {
-                throw new Error('Unable to connect provider to modal');
-              }
+      if (w3 === null) {
+        w3 = new Web3(p);
 
-              p.on('accountsChanged', function (e) {
-                disconnectWallet();
-              });
-              setProvider(p);
-            });
-          }
-        }();
+        if (w3 === null) {
+          throw new Error('Unable to connect web3');
+        }
 
-        return _temp3 && _temp3.then ? _temp3.then(_temp4) : _temp4(_temp3);
-      }, function (error) {
-        console.log(error);
-        alert('Unable to connect wallet. Please try again.');
-      }));
-    } catch (e) {
-      return Promise.reject(e);
-    }
-  };
+        setWeb3(w3);
+      }
 
-  var disconnectWallet = function disconnectWallet() {
-    try {
-      return Promise.resolve(web3Modal.clearCachedProvider()).then(function () {
-        setProvider(null);
-        setAccountAddress(null);
+      const accounts = await p.request({
+        method: 'eth_accounts'
       });
-    } catch (e) {
-      return Promise.reject(e);
+
+      if (accounts.length > 0) {
+        setAccountAddress(accounts[0]);
+        setTimeout(async () => {
+          refreshMyApps(accounts[0]);
+        }, 2000);
+      }
+    } catch (error) {
+      console.log(error);
+      alert('Unable to connect wallet. Please try again.');
     }
   };
 
-  var getTokenMetadata = function getTokenMetadata(uri) {
-    try {
-      return Promise.resolve(fetch(resolveIpfs(uri))).then(function (d) {
-        return Promise.resolve(d.json());
-      });
-    } catch (e) {
-      return Promise.reject(e);
-    }
+  const disconnectWallet = async () => {
+    await web3Modal.clearCachedProvider();
+    setProvider(null);
+    setAccountAddress(null);
   };
 
-  var installL2AppsForUse = function installL2AppsForUse(l2Apps) {
-    try {
-      var _temp9 = function _temp9() {
-        setInstalledApps(allInstalls);
+  const getTokenMetadata = async uri => {
+    const d = await fetch(resolveIpfs(uri));
+    const json = await d.json();
+    return json;
+  };
+
+  const installL2AppsForUse = async l2Apps => {
+    let allInstalls = [];
+
+    for (let i = 0; i < l2Apps.length; i++) {
+      let l2App = l2Apps[i];
+      let tokenMeta = {};
+
+      try {
+        tokenMeta = await getTokenMetadata(l2App.ByoaApp.tokenURI);
+      } catch (error) {}
+
+      let ia = {
+        id: l2App.AppId,
+        tokenURI: l2App.ByoaApp.tokenURI,
+        app: l2App.ByoaApp,
+        imageURI: tokenMeta.image,
+        byoaDetails: {
+          uri: tokenMeta.implementationURIs.browser,
+          target: 'iframe'
+        }
       };
-
-      var allInstalls = [];
-
-      var _temp10 = _forTo(l2Apps, function (i) {
-        function _temp6() {
-          var ia = {
-            id: l2App.AppId,
-            tokenURI: l2App.ByoaApp.tokenURI,
-            app: l2App.ByoaApp,
-            imageURI: tokenMeta.image,
-            byoaDetails: {
-              uri: tokenMeta.implementationURIs.browser,
-              target: 'iframe'
-            }
-          };
-          allInstalls.push(ia);
-        }
-
-        var l2App = l2Apps[i];
-        var tokenMeta = {};
-
-        var _temp5 = _catch(function () {
-          return Promise.resolve(getTokenMetadata(l2App.ByoaApp.tokenURI)).then(function (_getTokenMetadata) {
-            tokenMeta = _getTokenMetadata;
-          });
-        }, function () {});
-
-        return _temp5 && _temp5.then ? _temp5.then(_temp6) : _temp6(_temp5);
-      });
-
-      return Promise.resolve(_temp10 && _temp10.then ? _temp10.then(_temp9) : _temp9(_temp10));
-    } catch (e) {
-      return Promise.reject(e);
+      allInstalls.push(ia);
     }
+
+    setInstalledApps(allInstalls);
   };
 
-  var refreshMyApps = function refreshMyApps(addressHelper) {
+  const refreshMyApps = async addressHelper => {
+    let w3 = new Web3(providerNetwork);
+
     try {
-      var w3 = new Web3(providerNetwork);
+      let contract = new w3.eth.Contract(abi$1.abi, byoaContractAddress);
+      let myTokenIds = await contract.methods.walletOfOwner(accountAddress ? accountAddress : addressHelper).call();
+      let appLUT = {};
+      let allInstalls = [];
 
-      var _temp18 = _catch(function () {
-        var contract = new w3.eth.Contract(abi$1.abi, byoaContractAddress);
-        return Promise.resolve(contract.methods.walletOfOwner(accountAddress ? accountAddress : addressHelper).call()).then(function (myTokenIds) {
-          function _temp16() {
-            setInstalledApps(allInstalls);
+      for (var i = 0; i < myTokenIds.length; i++) {
+        let tid = parseInt(myTokenIds[i]);
+        let appIdForToken = await contract.methods.getAppIdByTokenId(tid).call();
+        let directTokenURI = await contract.methods.tokenURI(tid).call();
+        let tokenMeta = null;
+
+        try {
+          tokenMeta = await getTokenMetadata(directTokenURI);
+        } catch (e) {
+          console.warn("error fetching byoa app metadata, skipping this app. Tokenid", tid, "tokenUri", directTokenURI, "error", e);
+        }
+
+        if (tokenMeta === null) continue;
+
+        if (appLUT[appIdForToken] !== null) {
+          let appDetails = await contract.methods.getAppDetailsById(parseInt(appIdForToken)).call();
+          appLUT[appIdForToken] = {
+            id: appIdForToken,
+            name: appDetails[0],
+            description: appDetails[1],
+            tokenURI: appDetails[2],
+            owner: appDetails[3],
+            price: parseInt(appDetails[4]),
+            address: byoaContractAddress,
+            version: tokenMeta.version
+          };
+        }
+
+        let ia = {
+          id: tid,
+          tokenURI: directTokenURI,
+          app: appLUT[appIdForToken],
+          imageURI: tokenMeta.image,
+          byoaDetails: {
+            uri: tokenMeta.implementationURIs.browser,
+            target: 'iframe'
           }
+        };
+        allInstalls.push(ia);
+      }
 
-          var appLUT = {};
-          var allInstalls = [];
-
-          var _temp15 = _forTo(myTokenIds, function (i) {
-            var tid = parseInt(myTokenIds[i]);
-            return Promise.resolve(contract.methods.getAppIdByTokenId(tid).call()).then(function (appIdForToken) {
-              return Promise.resolve(contract.methods.tokenURI(tid).call()).then(function (directTokenURI) {
-                function _temp14() {
-                  function _temp12() {
-                    var ia = {
-                      id: tid,
-                      tokenURI: directTokenURI,
-                      app: appLUT[appIdForToken],
-                      imageURI: tokenMeta.image,
-                      byoaDetails: {
-                        uri: tokenMeta.implementationURIs.browser,
-                        target: 'iframe'
-                      }
-                    };
-                    allInstalls.push(ia);
-                  }
-
-                  if (tokenMeta === null) return;
-
-                  var _temp11 = function () {
-                    if (appLUT[appIdForToken] !== null) {
-                      return Promise.resolve(contract.methods.getAppDetailsById(parseInt(appIdForToken)).call()).then(function (appDetails) {
-                        appLUT[appIdForToken] = {
-                          id: appIdForToken,
-                          name: appDetails[0],
-                          description: appDetails[1],
-                          tokenURI: appDetails[2],
-                          owner: appDetails[3],
-                          price: parseInt(appDetails[4]),
-                          address: byoaContractAddress,
-                          version: tokenMeta.version
-                        };
-                      });
-                    }
-                  }();
-
-                  return _temp11 && _temp11.then ? _temp11.then(_temp12) : _temp12(_temp11);
-                }
-
-                var tokenMeta = null;
-
-                var _temp13 = _catch(function () {
-                  return Promise.resolve(getTokenMetadata(directTokenURI)).then(function (_getTokenMetadata2) {
-                    tokenMeta = _getTokenMetadata2;
-                  });
-                }, function (e) {
-                  console.warn("error fetching byoa app metadata, skipping this app. Tokenid", tid, "tokenUri", directTokenURI, "error", e);
-                });
-
-                return _temp13 && _temp13.then ? _temp13.then(_temp14) : _temp14(_temp13);
-              });
-            });
-          });
-
-          return _temp15 && _temp15.then ? _temp15.then(_temp16) : _temp16(_temp15);
-        });
-      }, function (error) {
-        console.log("Error fetching apps: " + error);
-      });
-
-      return Promise.resolve(_temp18 && _temp18.then ? _temp18.then(function () {}) : void 0);
-    } catch (e) {
-      return Promise.reject(e);
+      setInstalledApps(allInstalls);
+    } catch (error) {
+      console.log(`Error fetching apps: ${error}`);
     }
   };
 
@@ -4273,7 +3864,7 @@ var ByoaSDK = function ByoaSDK(props) {
   }, createElement(Container, {
     className: classes.speedDial
   }, createElement(DragMove, {
-    onDragMove: function onDragMove(e) {
+    onDragMove: e => {
       setTranslateDial({
         x: translateDial.x + e.movementX,
         y: translateDial.y + e.movementY
@@ -4289,7 +3880,7 @@ var ByoaSDK = function ByoaSDK(props) {
     }
   }, createElement(SpeedDial, {
     style: {
-      transform: "translateX(" + translateDial.x + "px) translateY(" + translateDial.y + "px)"
+      transform: `translateX(${translateDial.x}px) translateY(${translateDial.y}px)`
     },
     ariaLabel: "BYOA Speed Dial",
     hidden: false,
@@ -4297,26 +3888,26 @@ var ByoaSDK = function ByoaSDK(props) {
       color: "secondary"
     }), !isConnectingArgent && createElement(MenuIcon, null)),
     open: openDial,
-    onOpen: function onOpen() {
+    onOpen: () => {
       setOpenDial(true);
     },
-    onClose: function onClose() {
+    onClose: () => {
       setOpenDial(false);
     },
-    onClick: function onClick() {},
+    onClick: () => {},
     direction: dialDirection
   }, props.mode === "l1" && createElement(SpeedDialAction, {
     key: 'sda-connect-wallet',
     icon: createElement(AccountBalanceWalletIcon, null),
     tooltipTitle: 'Connect Wallet',
-    onClick: function onClick() {
+    onClick: () => {
       connectWallet();
     }
   }), (props.mode === "l2" || props.mode === undefined) && createElement(SpeedDialAction, {
     key: 'sda-connect-wallet-argent',
     icon: createElement(AccountBalanceWalletIcon, null),
     tooltipTitle: isConnectingArgent ? 'Connecting...' : isArgentConnected ? 'Connected' : 'Connect Argent',
-    onClick: function onClick() {
+    onClick: () => {
       if (isConnectingArgent) return;
 
       if (isArgentConnected === false || swo === undefined) {
@@ -4325,43 +3916,41 @@ var ByoaSDK = function ByoaSDK(props) {
         alert("Argent Wallet is already connected");
       }
     }
-  }), installedApps.map(function (installedApp, i) {
-    return createElement(SpeedDialAction, {
-      key: "sd-action-" + installedApp.id + "-" + i,
-      icon: createElement("img", {
-        style: {
-          width: '40px',
-          height: '40px'
-        },
-        src: resolveIpfs(installedApp.imageURI)
-      }),
-      tooltipTitle: installedApp.app.name + " " + installedApp.app.version + (runningAppId === "" + installedApp.app.id ? '(running)' : ''),
-      onClick: function onClick() {
-        if (appIsRunning) {
-          if (runningAppId !== "" + installedApp.app.id) {
-            alert("Only one app may be run at a time currently.");
-            return;
-          }
-
-          if (toggleExpandedView) {
-            toggleSingletonViewSize(viewIsExpanded ? 'small' : 'large');
-            setViewIsExpanded(!viewIsExpanded);
-          } else {
-            alert("Only one app may be run at a time currently.");
-          }
-
+  }), installedApps.map((installedApp, i) => createElement(SpeedDialAction, {
+    key: `sd-action-${installedApp.id}-${i}`,
+    icon: createElement("img", {
+      style: {
+        width: '40px',
+        height: '40px'
+      },
+      src: resolveIpfs(installedApp.imageURI)
+    }),
+    tooltipTitle: `${installedApp.app.name} ${installedApp.app.version}${runningAppId === `${installedApp.app.id}` ? '(running)' : ''}`,
+    onClick: () => {
+      if (appIsRunning) {
+        if (runningAppId !== `${installedApp.app.id}`) {
+          alert("Only one app may be run at a time currently.");
           return;
         }
 
-        if (installedApp.byoaDetails.target === "iframe") {
-          var c = getSingletonByoaAppContainer();
-          makeOrUpdateSingletonByoaAppIframe(c, resolveIpfs(installedApp.byoaDetails.uri));
-          setAppIsRunning(true);
-          setRunningAppId("" + installedApp.app.id);
+        if (toggleExpandedView) {
+          toggleSingletonViewSize(viewIsExpanded ? 'small' : 'large');
+          setViewIsExpanded(!viewIsExpanded);
+        } else {
+          alert("Only one app may be run at a time currently.");
         }
+
+        return;
       }
-    });
-  })))));
+
+      if (installedApp.byoaDetails.target === "iframe") {
+        const c = getSingletonByoaAppContainer();
+        makeOrUpdateSingletonByoaAppIframe(c, resolveIpfs(installedApp.byoaDetails.uri));
+        setAppIsRunning(true);
+        setRunningAppId(`${installedApp.app.id}`);
+      }
+    }
+  }))))));
 };
 
 export { ByoaSDK };
