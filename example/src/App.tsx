@@ -6,10 +6,8 @@ import 'byoa-sdk/dist/index.css'
 const App = () => {
   return (
     <div>
-      <h1>Hello World</h1>
-      {[...new Array(12)].map((_, i) => (
-        <p key={`dummy-${i}`}>Hello again my friends</p>
-      ))}
+      <h1 style={{textAlign: 'center'}}>BYOA Landing Page - Starknet Version</h1>
+      <p style={{textAlign: 'center'}}> - connect your argent wallet to begin -</p>
       <ByoaSDK 
       />
     </div>

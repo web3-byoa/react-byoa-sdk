@@ -45,8 +45,8 @@ const default_byoaContractAddress = `0x8f15c4ea6ce3fbfc5f7402c5766fc94202704161`
 const default_providerNetwork = `https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5`;
 const default_jrpcProvider = new ethers.providers.JsonRpcProvider('https://eth-mainnet.alchemyapi.io/v2/Uo717K-DDAxlSM5gXM-zgv678k0aMZH5', 'mainnet');
 const default_infuraId = "6430aa46e9354b91bea44e464af71f7a";
-const default_starknetAddress = "0x0602ddda312f52dac2609a4273c7a731b0e6e4b3aee83c41c6f3b9aa9ac02ae5";
-const default_starknetNetwork : 'goerli' | 'mainnet' = 'goerli';
+const default_starknetAddress = "0x071a48d5b8c9ffdd91fd21af1a12816fe420e731e6a776a30214bdc741dc10c4";
+const default_starknetNetwork : 'goerli' | 'mainnet' = 'mainnet';
 
 let listeners: any = [];
 // @ts-expect-error
